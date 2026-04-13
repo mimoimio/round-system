@@ -1,0 +1,9 @@
+# Project place file
+/round-base-system.rbxlx
+
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+/Packages
+
+sourcemap.json
