@@ -187,7 +187,7 @@ function SoundController.initialize()
 	-- Read SFXVolume from player data once it's available
 	local playerId = tostring(game.Players.LocalPlayer.UserId)
 	PlayerSessions:once(function(state)
-		local player = state.players[game.Players.LocalPlayer]
+		local player = state.players[playerId]
 		local Data = player and player.Data
 		return Data and Data.SFXVolume
 	end, function(SFXVolume)

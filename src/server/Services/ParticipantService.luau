@@ -1,16 +1,14 @@
 --!strict
-local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerStorage = game:GetService("ServerStorage")
 
+local CoffeeModule = require(ReplicatedStorage.Shared.CoffeeModule)
 local PlayerSessions = require(ReplicatedStorage.Shared.producers.PlayerSessions)
 local CharacterRegistry = require(game.ServerScriptService.Server.Modules.CharacterRegistry)
 
 local ParticipantService = {}
 
-local DUMMY_COUNT = 3
-local SWORD_NAME = "ClassicSword"
+local ROUND_ORDER_COUNT = 3
 
 local function getLobbyCFrame(): CFrame
 	local spawnLocation = workspace:FindFirstChildWhichIsA("SpawnLocation", true)
@@ -27,85 +25,79 @@ local function sendCharacterToLobby(character: Model)
 	end
 end
 
-local function giveLoadout(characterModel: Model)
-	local classicSword = ServerStorage:FindFirstChild("ClassicSword")
-	if not classicSword or not classicSword:IsA("Tool") then
-		warn("[ParticipantService] Missing Tool 'ClassicSword' in ServerStorage")
-		return
+local function getKitchenIds(): { string }
+	local ids = {}
+	local kitchensFolder = workspace:FindFirstChild("Kitchens")
+	if not kitchensFolder then
+		return ids
 	end
 
-	for _, child in characterModel:GetChildren() do
-		if child:IsA("Tool") and child.Name == classicSword.Name then
-			return
-		end
+	for _, kitchen in kitchensFolder:GetChildren() do
+		table.insert(ids, kitchen.Name)
 	end
 
-	local sword = classicSword:Clone()
-	sword.Parent = characterModel
-end
-
-local function removeSwordFromContainer(container: Instance)
-	for _, child in container:GetChildren() do
-		if child:IsA("Tool") and child.Name == SWORD_NAME then
-			child:Destroy()
-		end
-	end
-end
-
-local function cleanupPlayerLoadout(participantId: string, character: Model)
-	removeSwordFromContainer(character)
-
-	local numericPart = string.sub(participantId, 8)
-	local userId = tonumber(numericPart)
-	if not userId then
-		return
-	end
-
-	local player = Players:GetPlayerByUserId(userId)
-	if player then
-		local backpack = player:FindFirstChildOfClass("Backpack")
-		if backpack then
-			removeSwordFromContainer(backpack)
-		end
-	end
+	table.sort(ids)
+	return ids
 end
 
 local function registerPlayerParticipants()
+	local kitchenIds = getKitchenIds()
+	local kitchenCount = #kitchenIds
+	local playerIndex = 0
+
 	for _, player in Players:GetPlayers() do
 		local character = player.Character
 		if character then
-			local id = "Player_" .. tostring(player.UserId)
+			playerIndex += 1
+			local playerId = tostring(player.UserId)
+			local id = "Player_" .. playerId
+			local assignedKitchenId = if kitchenCount > 0
+				then kitchenIds[((playerIndex - 1) % kitchenCount) + 1]
+				else ""
+
 			CharacterRegistry.Register(id, character)
-			PlayerSessions.addParticipant(id, "Red")
+			PlayerSessions.addParticipant(playerId, id, "Red") -- changed addParticipant to store a UserId:number, so can easily get player entity.
+			PlayerSessions.setParticipantAssignedKitchenId(id, assignedKitchenId)
+			PlayerSessions.setParticipantCupId(id, "Empty")
+			PlayerSessions.setParticipantActiveOrders(id, {})
 		end
 	end
 end
 
-local function spawnDummyParticipants()
-	local dummyTemplate = ServerStorage:FindFirstChild("DummyRig")
-	if not dummyTemplate or not dummyTemplate:IsA("Model") then
-		warn("[ParticipantService] Missing Model 'DummyRig' in ServerStorage")
-		return
+local function getRoundOrderPool(): { string }
+	local pool = {}
+	for _, config in ipairs(CoffeeModule.Array) do
+		if
+			config.Id ~= "Empty"
+			and config.Ingredients
+			and #config.Ingredients > 1
+			and not CoffeeModule.Unorderables[config.Id]
+		then
+			table.insert(pool, config.Id)
+		end
 	end
 
-	for _ = 1, DUMMY_COUNT do
-		local dummyId = "Dummy_" .. HttpService:GenerateGUID(false)
-		local dummy = dummyTemplate:Clone()
-		dummy.Name = dummyId
-		dummy.Parent = workspace
-
-		CharacterRegistry.Register(dummyId, dummy)
-		PlayerSessions.addParticipant(dummyId, "Blue")
-	end
+	return pool
 end
 
-local function giveLoadoutToParticipants()
-	local participants = PlayerSessions:getState().CurrentRound.Participants
-	for participantId in participants do
-		local character = CharacterRegistry.GetModel(participantId)
-		if character then
-			giveLoadout(character)
-		end
+local function buildSharedRoundOrders(): { string }
+	local pool = getRoundOrderPool()
+	if #pool == 0 then
+		return {}
+	end
+
+	local orders = {}
+	for _ = 1, ROUND_ORDER_COUNT do
+		table.insert(orders, pool[math.random(1, #pool)])
+	end
+
+	return orders
+end
+
+local function assignOrdersForCurrentRound()
+	local sharedOrders = buildSharedRoundOrders()
+	for participantId, _ in PlayerSessions:getState().CurrentRound.Participants do
+		PlayerSessions.setParticipantActiveOrders(participantId, table.clone(sharedOrders))
 	end
 end
 
@@ -122,9 +114,7 @@ function ParticipantService.start()
 	end, function(phase: PlayerSessions.Phase, previousPhase: PlayerSessions.Phase)
 		if phase == "Starting" and previousPhase ~= "Starting" then
 			registerPlayerParticipants()
-			spawnDummyParticipants()
-		elseif phase == "InProgress" and previousPhase ~= "InProgress" then
-			giveLoadoutToParticipants()
+			assignOrdersForCurrentRound()
 		end
 	end)
 
@@ -136,10 +126,7 @@ function ParticipantService.start()
 		return function()
 			local character = CharacterRegistry.GetModel(participantId)
 			if character then
-				if string.sub(participantId, 1, 6) == "Dummy_" then
-					character:Destroy()
-				elseif string.sub(participantId, 1, 7) == "Player_" then
-					cleanupPlayerLoadout(participantId, character)
+				if string.sub(participantId, 1, 7) == "Player_" then
 					sendCharacterToLobby(character)
 				end
 			end

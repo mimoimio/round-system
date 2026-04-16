@@ -66,6 +66,7 @@ end
 
 local ScreenGui, root
 local isLoadedOnce
+local localPlayerId = tostring(game.Players.LocalPlayer.UserId)
 
 local function loadApp(character: Model)
 	if ScreenGui then
@@ -88,14 +89,14 @@ end
 
 PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
 	local players = state.players
-	local player = players and players[game.Players.LocalPlayer]
+	local player = players and players[localPlayerId]
 	local character = player and player.Character
 	return character
 end, function(character, prevcharacter)
 	loadApp()
 	PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
 		local players = state.players
-		local player = players and players[game.Players.LocalPlayer]
+		local player = players and players[localPlayerId]
 		local character = player and player.Character
 		return character
 	end, function()

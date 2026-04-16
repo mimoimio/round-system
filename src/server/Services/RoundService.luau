@@ -13,15 +13,17 @@ local RoundService = {}
 local ENABLE_ROUND_LOGS = false
 local LOG_PREFIX = "[RoundService]"
 
-local INTERMISSION_DURATION = 3
+local INTERMISSION_DURATION = 5
 local STARTING_DURATION = 3
-local IN_PROGRESS_DURATION = 12
+local IN_PROGRESS_DURATION = 300
 local ENDED_DURATION = 3
 local WAITING_RECHECK_DURATION = 3
 local LOOP_TICK_SECONDS = 1
 local MIN_PLAYERS = 1
 local WIN_REWARD_CASH = 10
 local ENABLE_REWARD_LOGS = true
+
+local winnerParticipantId: string? = nil
 
 local function log(message: string)
 	if ENABLE_ROUND_LOGS then
@@ -43,18 +45,6 @@ local function participantsCount(participants: { [string]: any }): number
 	return count
 end
 
-local function getLastParticipantTeam(participants: { [string]: ParticipantEntity }): (number, TeamColor)
-	local count = 0
-	local lastTeam: TeamColor = "None"
-
-	for _, participant in participants do
-		count += 1
-		lastTeam = participant.Team
-	end
-
-	return count, lastTeam
-end
-
 local function getPhase(): Phase
 	return PlayerSessions:getState().CurrentRound.Phase
 end
@@ -63,39 +53,33 @@ local function hasEnoughPlayers(): boolean
 	return #Players:GetPlayers() >= MIN_PLAYERS
 end
 
-local function awardWinningTeamCash(winner: TeamColor, participants: { [string]: ParticipantEntity })
-	if winner ~= "Red" and winner ~= "Blue" then
-		rewardLog(string.format("No winner payout. Winner=%s", winner))
+local function awardWinnerCash()
+	if not winnerParticipantId then
+		rewardLog("No winner payout. WinnerParticipant=None")
 		return
 	end
 
-	for participantId, participant in participants do
-		if participant.Team == winner and string.sub(participantId, 1, 7) == "Player_" then
-			local userId = tonumber(string.sub(participantId, 8))
-			if userId then
-				local player = Players:GetPlayerByUserId(userId)
-				if player then
-					PlayerSessions.addPlayerCash(player, WIN_REWARD_CASH)
-					rewardLog(
-						string.format(
-							"Winner reward granted. Player=%s Team=%s Amount=%d",
-							player.Name,
-							winner,
-							WIN_REWARD_CASH
-						)
-					)
-				else
-					rewardLog(
-						string.format("Skipped winner payout (player not in server). ParticipantId=%s", participantId)
-					)
-				end
-			else
-				rewardLog(
-					string.format("Skipped winner payout (invalid participant id). ParticipantId=%s", participantId)
-				)
-			end
-		end
+	if string.sub(winnerParticipantId, 1, 7) ~= "Player_" then
+		rewardLog(string.format("No winner payout. WinnerParticipant=%s", winnerParticipantId))
+		return
 	end
+
+	local userId = tonumber(string.sub(winnerParticipantId, 8))
+	if not userId then
+		rewardLog(
+			string.format("Skipped winner payout (invalid participant id). ParticipantId=%s", winnerParticipantId)
+		)
+		return
+	end
+
+	local player = Players:GetPlayerByUserId(userId)
+	if not player then
+		rewardLog(string.format("Skipped winner payout (player not in server). ParticipantId=%s", winnerParticipantId))
+		return
+	end
+
+	PlayerSessions.addPlayerCash(tostring(player.UserId), WIN_REWARD_CASH)
+	rewardLog(string.format("Winner reward granted. Player=%s Amount=%d", player.Name, WIN_REWARD_CASH))
 end
 
 local function transitionFromWaitingForPlayers()
@@ -126,16 +110,36 @@ end
 
 local function transitionFromStarting()
 	log(string.format("Phase transition: Starting -> InProgress (duration=%ds)", IN_PROGRESS_DURATION))
+	winnerParticipantId = nil
 	PlayerSessions.setRoundWinner("None")
 	PlayerSessions.setPhase("InProgress", IN_PROGRESS_DURATION)
 end
 
 local function transitionFromInProgress()
 	log("Evaluating InProgress completion and winner state")
-	if PlayerSessions:getState().CurrentRound.Winner == "None" then
-		log("Winner is None at end of InProgress, setting Winner=Draw")
+	local participants = PlayerSessions:getState().CurrentRound.Participants
+	local highestPoints = -math.huge
+	local highestParticipantId: string? = nil
+	local tie = false
+
+	for participantId, participant in participants do
+		if participant.Points > highestPoints then
+			highestPoints = participant.Points
+			highestParticipantId = participantId
+			tie = false
+		elseif participant.Points == highestPoints then
+			tie = true
+		end
+	end
+
+	if highestParticipantId and not tie then
+		winnerParticipantId = highestParticipantId
+		PlayerSessions.setRoundWinner(participants[highestParticipantId].Team)
+	else
+		winnerParticipantId = nil
 		PlayerSessions.setRoundWinner("Draw")
 	end
+
 	log(string.format("Phase transition: InProgress -> Ended (duration=%ds)", ENDED_DURATION))
 	PlayerSessions.setPhase("Ended", ENDED_DURATION)
 end
@@ -143,7 +147,7 @@ end
 local function transitionFromEnded()
 	local currentRound = PlayerSessions:getState().CurrentRound
 	local participants = currentRound.Participants
-	awardWinningTeamCash(currentRound.Winner, participants)
+	awardWinnerCash()
 	local beforeCount = participantsCount(participants)
 	log(string.format("Phase transition: Ended -> WaitingForPlayers. Clearing participants (count=%d)", beforeCount))
 	for userId in participants do
@@ -166,18 +170,18 @@ local function runLoop()
 		local currentRound = PlayerSessions:getState().CurrentRound
 
 		if currentRound.Phase == "InProgress" then
-			local participantTotal, lastTeam = getLastParticipantTeam(currentRound.Participants)
-			if participantTotal <= 1 then
-				local winner: TeamColor = if participantTotal == 1 then lastTeam else "Draw"
-				log(
-					string.format(
-						"InProgress early completion. Participants=%d Winner=%s -> transitioning to Ended",
-						participantTotal,
-						winner
-					)
-				)
-				PlayerSessions.setRoundWinner(winner)
-				PlayerSessions.setPhase("Ended", ENDED_DURATION)
+			local roundShouldEndEarly = false
+			for participantId, participant in currentRound.Participants do
+				if #participant.ActiveOrders == 0 then
+					winnerParticipantId = participantId
+					PlayerSessions.setRoundWinner(participant.Team)
+					PlayerSessions.setPhase("Ended", ENDED_DURATION)
+					roundShouldEndEarly = true
+					break
+				end
+			end
+
+			if roundShouldEndEarly then
 				task.wait(LOOP_TICK_SECONDS)
 				continue
 			end

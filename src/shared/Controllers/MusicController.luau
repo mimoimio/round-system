@@ -114,7 +114,7 @@ function MusicController.initialize()
 
 	local playerId = tostring(game.Players.LocalPlayer.UserId)
 	PlayerSessions:once(function(state)
-		local player = state.players[game.Players.LocalPlayer]
+		local player = state.players[playerId]
 		local Data = player and player.Data
 		local MusicVolume = Data and Data.MusicVolume
 		return MusicVolume

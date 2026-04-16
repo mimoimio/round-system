@@ -19,8 +19,12 @@ export type TeamColor = "Red" | "Blue" | "Draw" | "None"
 
 export type ParticipantEntity = {
 	Team: TeamColor,
+	PlayerId: string,
 	Points: number,
 	Inventory: { string },
+	AssignedKitchenId: string,
+	CupId: string,
+	ActiveOrders: { string },
 }
 
 export type RoundState = {
@@ -45,13 +49,17 @@ export type PlayersActions = {
 	setSFXVolume: (playerId: string, volume: number) -> (),
 	setCharacter: (playerId: string, character: Model?) -> (),
 	setPhase: (newPhase: Phase, duration: number) -> (),
-	addParticipant: (userId: string, team: TeamColor) -> (),
+	addParticipant: (playerId: string?, userId: string, team: TeamColor) -> (), -- playerId may be nil cuz bot
 	removeParticipant: (userId: string) -> (),
 	setRoundWinner: (team: TeamColor) -> (),
+	setParticipantCupId: (userId: string, cupId: string) -> (),
+	setParticipantAssignedKitchenId: (userId: string, kitchenId: string) -> (),
+	setParticipantActiveOrders: (userId: string, orders: { string }) -> (),
+	addParticipantPoint: (userId: string, amount: number) -> (),
 }
 
 export type PlayersState = {
-	players: { [any]: PlayerEntity },
+	players: { [string]: PlayerEntity },
 	CurrentRound: RoundState,
 }
 
@@ -67,7 +75,7 @@ local initialState: PlayersState = {
 
 local actions = {
 	-- Player session management
-	addPlayer = function(state: PlayersState, playerId: any, data: Data)
+	addPlayer = function(state: PlayersState, playerId: string, data: Data)
 		return Merge(state, {
 			players = Set(state.players, playerId, {
 				Data = data,
@@ -75,13 +83,13 @@ local actions = {
 		})
 	end,
 
-	removePlayer = function(state: PlayersState, playerId: any)
+	removePlayer = function(state: PlayersState, playerId: string)
 		return Merge(state, {
 			players = RemoveKey(state.players, playerId),
 		})
 	end,
 
-	addPlayerCash = function(state: PlayersState, playerId: any, amt: number)
+	addPlayerCash = function(state: PlayersState, playerId: string, amt: number)
 		local playerEntity = state.players[playerId]
 		if not playerEntity then
 			return state
@@ -100,7 +108,7 @@ local actions = {
 		})
 	end,
 
-	deductPlayerCash = function(state: PlayersState, playerId: any, amt: number)
+	deductPlayerCash = function(state: PlayersState, playerId: string, amt: number)
 		local playerEntity = state.players[playerId]
 		if not playerEntity then
 			return state
@@ -119,7 +127,7 @@ local actions = {
 		})
 	end,
 
-	setMusicVolume = function(state: PlayersState, playerId: any, volume: number)
+	setMusicVolume = function(state: PlayersState, playerId: string, volume: number)
 		local playerEntity = state.players[playerId]
 		if not playerEntity then
 			return state
@@ -138,7 +146,7 @@ local actions = {
 		})
 	end,
 
-	setSFXVolume = function(state: PlayersState, playerId: any, volume: number)
+	setSFXVolume = function(state: PlayersState, playerId: string, volume: number)
 		local playerEntity = state.players[playerId]
 		if not playerEntity then
 			return state
@@ -157,7 +165,7 @@ local actions = {
 		})
 	end,
 
-	setCharacter = function(state: PlayersState, playerId: any, character: Model?)
+	setCharacter = function(state: PlayersState, playerId: string, character: Model?)
 		local playerEntity = state.players[playerId]
 		if not playerEntity then
 			return state
@@ -185,7 +193,7 @@ local actions = {
 		})
 	end,
 
-	addParticipant = function(state: PlayersState, userId: string, team: TeamColor)
+	addParticipant = function(state: PlayersState, playerId: string, userId: string, team: TeamColor)
 		local existing = state.CurrentRound.Participants[userId]
 		local participant: ParticipantEntity = if existing
 			then Merge(existing, {
@@ -193,8 +201,12 @@ local actions = {
 			})
 			else {
 				Team = team,
+				PlayerId = playerId,
 				Points = 0,
 				Inventory = {},
+				AssignedKitchenId = "",
+				CupId = "Empty",
+				ActiveOrders = {},
 			}
 
 		return Merge(state, {
@@ -216,6 +228,82 @@ local actions = {
 		return Merge(state, {
 			CurrentRound = Merge(state.CurrentRound, {
 				Winner = team,
+			}),
+		})
+	end,
+
+	setParticipantCupId = function(state: PlayersState, userId: string, cupId: string)
+		local participant = state.CurrentRound.Participants[userId]
+		if not participant then
+			return state
+		end
+
+		return Merge(state, {
+			CurrentRound = Merge(state.CurrentRound, {
+				Participants = Set(
+					state.CurrentRound.Participants,
+					userId,
+					Merge(participant, {
+						CupId = cupId,
+					})
+				),
+			}),
+		})
+	end,
+
+	setParticipantAssignedKitchenId = function(state: PlayersState, userId: string, kitchenId: string)
+		local participant = state.CurrentRound.Participants[userId]
+		if not participant then
+			return state
+		end
+
+		return Merge(state, {
+			CurrentRound = Merge(state.CurrentRound, {
+				Participants = Set(
+					state.CurrentRound.Participants,
+					userId,
+					Merge(participant, {
+						AssignedKitchenId = kitchenId,
+					})
+				),
+			}),
+		})
+	end,
+
+	setParticipantActiveOrders = function(state: PlayersState, userId: string, orders: { string })
+		local participant = state.CurrentRound.Participants[userId]
+		if not participant then
+			return state
+		end
+
+		return Merge(state, {
+			CurrentRound = Merge(state.CurrentRound, {
+				Participants = Set(
+					state.CurrentRound.Participants,
+					userId,
+					Merge(participant, {
+						ActiveOrders = orders,
+					})
+				),
+			}),
+		})
+	end,
+
+	addParticipantPoint = function(state: PlayersState, userId: string, amount: number)
+		local participant = state.CurrentRound.Participants[userId]
+		if not participant then
+			return state
+		end
+
+		return Merge(state, {
+			CurrentRound = Merge(state.CurrentRound, {
+				Participants = Set(
+					state.CurrentRound.Participants,
+					userId,
+					Merge(participant, {
+						Points = participant.Points + amount,
+					})
+				),
 			}),
 		})
 	end,

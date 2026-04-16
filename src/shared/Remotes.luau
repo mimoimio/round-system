@@ -62,6 +62,14 @@ local function ClaimRoulette()
 	return remote
 end
 
+local function InteractStation()
+	local remote = isserver and Instance.new("RemoteEvent")
+		or ReplicatedStorage.Shared.Events:WaitForChild("InteractStation")
+	remote.Name = "InteractStation"
+	remote.Parent = ReplicatedStorage.Shared.Events
+	return remote
+end
+
 return {
 	start = Start() :: RemoteEvent,
 	dispatch = Dispatch() :: RemoteEvent,
@@ -71,4 +79,5 @@ return {
 	ScoreNotification = ScoreNotification() :: RemoteEvent,
 	Maxed = Maxed() :: RemoteEvent,
 	ClaimRoulette = ClaimRoulette() :: RemoteFunction,
+	InteractStation = InteractStation() :: RemoteEvent,
 }

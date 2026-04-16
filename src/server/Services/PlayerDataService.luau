@@ -14,6 +14,10 @@ local GLOBAL_ACTIONS = {
 	addParticipant = true,
 	removeParticipant = true,
 	setRoundWinner = true,
+	setParticipantCupId = true,
+	setParticipantAssignedKitchenId = true,
+	setParticipantActiveOrders = true,
+	addParticipantPoint = true,
 }
 
 type Profile = ProfileStoreModule.Profile<PlayerData> -- Typed Profile object
@@ -47,14 +51,16 @@ local PROFILE_TEMPLATE: PlayerSessions.Data = {
 }
 
 local function selectPlayerData(player: Player)
+	local playerId = tostring(player.UserId)
 	return function(state)
-		return state.players[player] and state.players[player].Data
+		return state.players[playerId] and state.players[playerId].Data
 	end
 end
 
 local function selectPlayerCash(player: Player)
+	local playerId = tostring(player.UserId)
 	return function(state)
-		local playerEntity = state.players[player]
+		local playerEntity = state.players[playerId]
 		return if playerEntity and playerEntity.Data then playerEntity.Data.Cash else 0
 	end
 end
@@ -187,12 +193,14 @@ local broadcaster = Reflex.createBroadcaster({
 		player --[[,state]]
 	)
 		local state = PlayerSessions:getState()
+		local playerId = tostring(player.UserId)
 		return {
-			players = { [player] = state.players[player] },
+			players = { [playerId] = state.players[playerId] },
 			CurrentRound = state.CurrentRound,
 		}
 	end,
 	dispatch = function(player, actions)
+		local playerId = tostring(player.UserId)
 		local relevantActions = {}
 
 		for _, action in actions do
@@ -205,7 +213,7 @@ local broadcaster = Reflex.createBroadcaster({
 			-- end
 			if GLOBAL_ACTIONS[action.name] then
 				table.insert(relevantActions, action)
-			elseif targetPlayer == player or targetPlayer == nil then
+			elseif targetPlayer == playerId or targetPlayer == nil then
 				table.insert(relevantActions, action)
 			elseif action.name == "setCurrentSeed" or action.name == "updateAllCollectors" then
 				table.insert(relevantActions, action)
@@ -235,7 +243,8 @@ Remotes.start.OnServerEvent:Connect(function(player)
 		end
 	until profile
 	local character = player.Character or player.CharacterAdded:Wait()
-	PlayerSessions.addPlayer(player, profile.Data)
+	local playerId = tostring(player.UserId)
+	PlayerSessions.addPlayer(playerId, profile.Data)
 	local cashValue = ensureLeaderstatsCash(player, profile.Data.Cash or 0)
 	local selectData = selectPlayerData(player)
 	local selectCash = selectPlayerCash(player)
@@ -247,23 +256,23 @@ Remotes.start.OnServerEvent:Connect(function(player)
 	end)
 
 	task.spawn(function()
-		PlayerSessions.setCharacter(player, character)
+		PlayerSessions.setCharacter(playerId, character)
 	end)
 
 	player.CharacterAdded:Connect(function(character)
-		PlayerSessions.setCharacter(player, character)
-		local entity = PlayerSessions:getState().players[player]
-		if not (entity and entity.Plot) then
-			return
-		end
-		character:PivotTo(entity.Plot:GetPivot())
+		-- PlayerSessions.setCharacter(playerId, character)
+		-- local entity = PlayerSessions:getState().players[playerId]
+		-- if not (entity and entity.Plot) then
+		-- 	return
+		-- end
+		-- character:PivotTo(entity.Plot:GetPivot())
 	end)
 
 	profile.OnSessionEnd:Connect(function()
 		unsubscribe()
 		unsubscribeCash()
 		Profiles[player] = nil
-		PlayerSessions.removePlayer(player)
+		PlayerSessions.removePlayer(playerId)
 		player:Kick("Your data session has ended. Please rejoin.")
 		ProfileSessionEnded:Fire()
 	end)

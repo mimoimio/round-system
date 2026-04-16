@@ -37,7 +37,7 @@ function CombatService.start()
 				local killer = creatorTag.Value
 				local victim = Players:GetPlayerFromCharacter(character)
 				if killer ~= victim then
-					PlayerSessions.addPlayerCash(killer, KILL_REWARD_CASH)
+					PlayerSessions.addPlayerCash(tostring(killer.UserId), KILL_REWARD_CASH)
 					rewardLog(
 						string.format(
 							"Kill reward granted. Killer=%s Victim=%s Amount=%d",
@@ -62,4 +62,5 @@ function CombatService.start()
 	end)
 end
 
-return CombatService
+-- return CombatService
+return {}

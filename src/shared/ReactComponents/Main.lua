@@ -1,55 +1,87 @@
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.React)
 local PlayerSessions = require(ReplicatedStorage.Shared.producers.PlayerSessions)
+
+local IngredientProximityPrompts = require(script.Parent.IngredientProximityPrompts)
+local IngredientPromptController = require(script.Parent.IngredientPromptController)
+local RoundHUD = require(script.Parent.HUD.RoundHUD)
+local useToast = require(script.Parent.Toasts).useToast
+
 local e = React.createElement
+local useState = React.useState
+
+local localPlayer = Players.LocalPlayer
+local localParticipantId = "Player_" .. tostring(localPlayer.UserId)
+local EMPTY_ORDERS: { string } = table.freeze({})
 
 local function Main(props)
-	local roundState, setRoundState = React.useState(function()
+	local roundState, setRoundState = useState(function()
 		return PlayerSessions:getState().CurrentRound
 	end)
-	local now, setNow = React.useState(os.time())
+	local toast = useToast()
+	local assignedKitchenId, setAssignedKitchenId = useState("")
+	local activeOrders, setActiveOrders = useState({} :: { string })
+	local cash, setCash = useState(nil)
 
 	React.useEffect(function()
-		local unsubscribe = PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
+		local unsubscribeRound = PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
 			return state.CurrentRound
 		end, function(nextRound)
 			setRoundState(nextRound)
 		end)
 
-		return unsubscribe
-	end, {})
-
-	React.useEffect(function()
-		local connection = RunService.Heartbeat:Connect(function()
-			setNow(os.time())
+		local unsubscribeKitchen = PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
+			local participant = state.CurrentRound.Participants[localParticipantId]
+			return if participant then participant.AssignedKitchenId else ""
+		end, function(nextKitchenId: string)
+			setAssignedKitchenId(nextKitchenId)
 		end)
 
+		local unsubscribeOrders = PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
+			local participant = state.CurrentRound.Participants[localParticipantId]
+			return if participant then participant.ActiveOrders else EMPTY_ORDERS
+		end, function(nextOrders: { string })
+			setActiveOrders(nextOrders)
+		end)
+		local unsubCash = PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
+			local playerEntity = state.players[tostring(localPlayer.UserId)]
+			return if playerEntity and playerEntity.Data then playerEntity.Data.Cash else nil
+		end, function(nextCash: number?)
+			setCash(function(prev)
+				if prev then
+					toast.open("+$" .. (nextCash - prev))
+				end
+				return nextCash
+			end)
+		end)
+		local state = PlayerSessions:getState()
+		local playerEntity = state.players[tostring(localPlayer.UserId)]
+		local xcash = if playerEntity and playerEntity.Data then playerEntity.Data.Cash else nil
+
+		setCash(xcash)
+
 		return function()
-			connection:Disconnect()
+			unsubscribeRound()
+			unsubscribeKitchen()
+			unsubscribeOrders()
+			unsubCash()
 		end
 	end, {})
 
-	local remaining = math.max(0, roundState.TimeEnd - now)
-	local showCountdown = roundState.Phase ~= "InProgress"
-
-	return e("Frame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-	}, {
-		Countdown = showCountdown and e("TextLabel", {
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.fromScale(0.5, 0.05),
-			Size = UDim2.fromOffset(420, 52),
-			BackgroundTransparency = 0.35,
-			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-			BorderSizePixel = 0,
-			TextColor3 = Color3.fromRGB(255, 255, 255),
-			TextScaled = true,
-			Font = Enum.Font.GothamBold,
-			Text = string.format("%s | %ds", roundState.Phase, remaining),
-		}) or nil,
+	return e(React.Fragment, nil, {
+		PromptController = e(IngredientPromptController, {
+			AssignedKitchenId = assignedKitchenId,
+		}),
+		HUD = e(RoundHUD, {
+			Phase = roundState.Phase,
+			TimeEnd = roundState.TimeEnd,
+			AssignedKitchenId = assignedKitchenId,
+			ActiveOrders = activeOrders,
+		}),
+		IngredientPrompts = e(IngredientProximityPrompts),
 	})
 end
+
 return Main
