@@ -233,26 +233,28 @@ local function ResolutionActionAnimations()
 			end
 		end)
 
-		local snapshotConnection = Remotes.ResolutionSnapshot.OnClientEvent:Connect(function(snapshot: ResolutionSnapshotPayload)
-			if type(snapshot.turnIndex) ~= "number" then
-				return
-			end
-			if snapshot.turnIndex < latestTurnRef.current then
-				return
-			end
-			if snapshot.turnIndex == latestTurnRef.current and snapshot.dispatchedAt <= 0 then
-				return
-			end
+		local snapshotConnection = Remotes.ResolutionSnapshot.OnClientEvent:Connect(
+			function(snapshot: ResolutionSnapshotPayload)
+				if type(snapshot.turnIndex) ~= "number" then
+					return
+				end
+				if snapshot.turnIndex < latestTurnRef.current then
+					return
+				end
+				if snapshot.turnIndex == latestTurnRef.current and snapshot.dispatchedAt <= 0 then
+					return
+				end
 
-			latestTurnRef.current = snapshot.turnIndex
-			sequenceTokenRef.current += 1
-			local sequenceToken = sequenceTokenRef.current
-			clearInstances()
+				latestTurnRef.current = snapshot.turnIndex
+				sequenceTokenRef.current += 1
+				local sequenceToken = sequenceTokenRef.current
+				clearInstances()
 
-			for index, entry in snapshot.actions do
-				scheduleAction(entry, index, sequenceToken)
+				for index, entry in snapshot.actions do
+					scheduleAction(entry, index, sequenceToken)
+				end
 			end
-		end)
+		)
 
 		return function()
 			phaseUnsubscribe()

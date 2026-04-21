@@ -54,11 +54,11 @@ local function Main(_props)
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 	}, {
-		e("UIPadding",{
-			PaddingRight = UDim.new(0,12),
-			PaddingLeft = UDim.new(0,12),
-			PaddingTop = UDim.new(0,12),
-			PaddingBottom = UDim.new(0,12),
+		e("UIPadding", {
+			PaddingRight = UDim.new(0, 12),
+			PaddingLeft = UDim.new(0, 12),
+			PaddingTop = UDim.new(0, 12),
+			PaddingBottom = UDim.new(0, 12),
 		}),
 		ResolutionAnimations = e(ResolutionActionAnimations),
 		RoundStartFlash = e(RoundStartFlash),
