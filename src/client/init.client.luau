@@ -24,6 +24,11 @@ local receiver = Reflex.createBroadcastReceiver({
 })
 
 game.ReplicatedStorage.Shared.Events.dispatch.OnClientEvent:Connect(function(actions: { DispatchedAction })
+	-- for i, action in actions do
+	-- 	warn('action', action.name, action.arguments)
+	-- end
+
+
 	receiver:dispatch(actions)
 	DispatchEvent.OnActionsDispatched(actions)
 end)
@@ -77,7 +82,7 @@ local function loadApp(character: Model)
 	end
 
 	ScreenGui = Instance.new("ScreenGui", game.Players.LocalPlayer.PlayerGui)
-	ScreenGui.ResetOnSpawn = true
+	ScreenGui.ResetOnSpawn = false
 	ScreenGui.Name = "ReactRoot"
 	ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	root = ReactRoblox.createRoot(ScreenGui)
@@ -87,22 +92,22 @@ local function loadApp(character: Model)
 	isLoadedOnce = true
 end
 
-PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
-	local players = state.players
-	local player = players and players[localPlayerId]
-	local character = player and player.Character
-	return character
-end, function(character, prevcharacter)
-	loadApp()
-	PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
-		local players = state.players
-		local player = players and players[localPlayerId]
-		local character = player and player.Character
-		return character
-	end, function()
-		loadApp()
-	end)
-end)
+-- PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
+-- 	local players = state.players
+-- 	local player = players and players[localPlayerId]
+-- 	local character = player and player.Character
+-- 	return character
+-- end, function(character, prevcharacter)
+-- 	loadApp()
+-- 	PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
+-- 		local players = state.players
+-- 		local player = players and players[localPlayerId]
+-- 		local character = player and player.Character
+-- 		return character
+-- 	end, function()
+-- 		loadApp()
+-- 	end)
+-- end)
 
 local secs = 0
 

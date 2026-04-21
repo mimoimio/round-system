@@ -70,6 +70,22 @@ local function InteractStation()
 	return remote
 end
 
+local function PistolInput()
+	local remote = isserver and Instance.new("RemoteEvent")
+		or ReplicatedStorage.Shared.Events:WaitForChild("PistolInput")
+	remote.Name = "PistolInput"
+	remote.Parent = ReplicatedStorage.Shared.Events
+	return remote
+end
+
+local function CombatFeedback()
+	local remote = isserver and Instance.new("RemoteEvent")
+		or ReplicatedStorage.Shared.Events:WaitForChild("CombatFeedback")
+	remote.Name = "CombatFeedback"
+	remote.Parent = ReplicatedStorage.Shared.Events
+	return remote
+end
+
 return {
 	start = Start() :: RemoteEvent,
 	dispatch = Dispatch() :: RemoteEvent,
@@ -80,4 +96,6 @@ return {
 	Maxed = Maxed() :: RemoteEvent,
 	ClaimRoulette = ClaimRoulette() :: RemoteFunction,
 	InteractStation = InteractStation() :: RemoteEvent,
+	PistolInput = PistolInput() :: RemoteEvent,
+	CombatFeedback = CombatFeedback() :: RemoteEvent,
 }

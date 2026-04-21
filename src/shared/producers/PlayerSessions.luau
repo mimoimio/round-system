@@ -2,6 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Reflex = require(ReplicatedStorage.Packages.Reflex)
 local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local Dictionary = Sift.Dictionary
 local Merge = Dictionary.merge
 local Set = Dictionary.set
@@ -11,26 +12,30 @@ export type Data = {
 	Cash: number,
 	MusicVolume: number?,
 	SFXVolume: number?,
+	Kills: number,
+	Assists: number,
+	Wins: number,
 	[string]: any,
 }
 
-export type Phase = "WaitingForPlayers" | "Intermission" | "Starting" | "InProgress" | "Ended"
-export type TeamColor = "Red" | "Blue" | "Draw" | "None"
+export type Phase = "WaitingForPlayers" | "Intermission" | "ActionInput" | "Resolution" | "Ended"
+export type PendingAction = "None" | "Load" | "Shield" | "Shoot"
 
 export type ParticipantEntity = {
-	Team: TeamColor,
 	PlayerId: string,
-	Points: number,
-	Inventory: { string },
-	AssignedKitchenId: string,
-	CupId: string,
-	ActiveOrders: { string },
+	IsAlive: boolean,
+	Bullets: number,
+	PendingAction: PendingAction,
+	PendingShields: number,
+	PendingTargets: { [string]: number },
+	IsReady: boolean,
 }
 
 export type RoundState = {
 	Phase: Phase,
 	TimeEnd: number,
-	Winner: TeamColor,
+	TurnIndex: number,
+	WinnerParticipantId: string?,
 	Participants: { [string]: ParticipantEntity },
 }
 
@@ -48,14 +53,24 @@ export type PlayersActions = {
 	setMusicVolume: (playerId: string, volume: number) -> (),
 	setSFXVolume: (playerId: string, volume: number) -> (),
 	setCharacter: (playerId: string, character: Model?) -> (),
+
 	setPhase: (newPhase: Phase, duration: number) -> (),
-	addParticipant: (playerId: string?, userId: string, team: TeamColor) -> (), -- playerId may be nil cuz bot
-	removeParticipant: (userId: string) -> (),
-	setRoundWinner: (team: TeamColor) -> (),
-	setParticipantCupId: (userId: string, cupId: string) -> (),
-	setParticipantAssignedKitchenId: (userId: string, kitchenId: string) -> (),
-	setParticipantActiveOrders: (userId: string, orders: { string }) -> (),
-	addParticipantPoint: (userId: string, amount: number) -> (),
+	setRoundTurnIndex: (turnIndex: number) -> (),
+	setRoundWinnerParticipant: (participantId: string?) -> (),
+	addParticipant: (playerId: string, participantId: string) -> (),
+	removeParticipant: (participantId: string) -> (),
+	setParticipantAlive: (participantId: string, isAlive: boolean) -> (),
+	setParticipantBullets: (participantId: string, bullets: number) -> (),
+	addParticipantBullets: (participantId: string, amount: number) -> (),
+	setParticipantPendingAction: (participantId: string, action: PendingAction) -> (),
+	setParticipantReady: (participantId: string, isReady: boolean) -> (),
+	addParticipantShield: (participantId: string, amount: number) -> (),
+	clearParticipantPending: (participantId: string) -> (),
+	setParticipantTargetAllocation: (participantId: string, targetParticipantId: string, amount: number) -> (),
+	resetParticipantForRound: (participantId: string, bullets: number) -> (),
+	addPlayerKill: (participantId: string, amount: number) -> (),
+	addPlayerAssist: (participantId: string, amount: number) -> (),
+	addPlayerWin: (participantId: string, amount: number) -> (),
 }
 
 export type PlayersState = {
@@ -68,17 +83,73 @@ local initialState: PlayersState = {
 	CurrentRound = {
 		Phase = "WaitingForPlayers",
 		TimeEnd = 0,
-		Winner = "None",
+		TurnIndex = 0,
+		WinnerParticipantId = nil,
 		Participants = {},
 	},
 }
 
+local function updateParticipant(
+	state: PlayersState,
+	participantId: string,
+	updater: (participant: ParticipantEntity) -> ParticipantEntity
+): PlayersState
+	local participant = state.CurrentRound.Participants[participantId]
+	if not participant then
+		return state
+	end
+
+	return Merge(state, {
+		CurrentRound = Merge(state.CurrentRound, {
+			Participants = Set(state.CurrentRound.Participants, participantId, updater(participant)),
+		}),
+	})
+end
+
+local function ensureCombatStats(data: Data): Data
+	local kills = if type(data.Kills) == "number" then data.Kills else 0
+	local assists = if type(data.Assists) == "number" then data.Assists else 0
+	local wins = if type(data.Wins) == "number" then data.Wins else 0
+
+	return Merge(data, {
+		Kills = math.max(0, kills),
+		Assists = math.max(0, assists),
+		Wins = math.max(0, wins),
+	})
+end
+
+local function updateParticipantPlayerData(
+	state: PlayersState,
+	participantId: string,
+	updater: (data: Data) -> Data
+): PlayersState
+	local participant = state.CurrentRound.Participants[participantId]
+	if not participant then
+		return state
+	end
+
+	local playerId = participant.PlayerId
+	local playerEntity = state.players[playerId]
+	if not playerEntity then
+		return state
+	end
+
+	return Merge(state, {
+		players = Set(
+			state.players,
+			playerId,
+			Merge(playerEntity, {
+				Data = updater(ensureCombatStats(playerEntity.Data)),
+			})
+		),
+	})
+end
+
 local actions = {
-	-- Player session management
 	addPlayer = function(state: PlayersState, playerId: string, data: Data)
 		return Merge(state, {
 			players = Set(state.players, playerId, {
-				Data = data,
+				Data = ensureCombatStats(data),
 			}),
 		})
 	end,
@@ -188,126 +259,173 @@ local actions = {
 			CurrentRound = Merge(state.CurrentRound, {
 				Phase = newPhase,
 				TimeEnd = os.time() + clampedDuration,
-				Winner = if newPhase == "Ended" then state.CurrentRound.Winner else "None",
 			}),
 		})
 	end,
 
-	addParticipant = function(state: PlayersState, playerId: string, userId: string, team: TeamColor)
-		local existing = state.CurrentRound.Participants[userId]
-		local participant: ParticipantEntity = if existing
-			then Merge(existing, {
-				Team = team,
+	setRoundTurnIndex = function(state: PlayersState, turnIndex: number)
+		return Merge(state, {
+			CurrentRound = Merge(state.CurrentRound, {
+				TurnIndex = math.max(0, turnIndex),
+			}),
+		})
+	end,
+
+	setRoundWinnerParticipant = function(state: PlayersState, participantId: string?)
+		return Merge(state, {
+			CurrentRound = Merge(state.CurrentRound, {
+				WinnerParticipantId = participantId,
+			}),
+		})
+	end,
+
+	addParticipant = function(state: PlayersState, playerId: string, participantId: string)
+		if state.CurrentRound.Participants[participantId] then
+			return state
+		end
+
+		local participant: ParticipantEntity = {
+			PlayerId = playerId,
+			IsAlive = true,
+			Bullets = 0,
+			PendingAction = "None",
+			PendingShields = 0,
+			PendingTargets = {},
+			IsReady = false,
+		}
+
+		return Merge(state, {
+			CurrentRound = Merge(state.CurrentRound, {
+				Participants = Set(state.CurrentRound.Participants, participantId, participant),
+			}),
+		})
+	end,
+
+	removeParticipant = function(state: PlayersState, participantId: string)
+		return Merge(state, {
+			CurrentRound = Merge(state.CurrentRound, {
+				Participants = RemoveKey(state.CurrentRound.Participants, participantId),
+			}),
+		})
+	end,
+
+	setParticipantAlive = function(state: PlayersState, participantId: string, isAlive: boolean)
+		return updateParticipant(state, participantId, function(participant)
+			return Merge(participant, {
+				IsAlive = isAlive,
 			})
-			else {
-				Team = team,
-				PlayerId = playerId,
-				Points = 0,
-				Inventory = {},
-				AssignedKitchenId = "",
-				CupId = "Empty",
-				ActiveOrders = {},
-			}
-
-		return Merge(state, {
-			CurrentRound = Merge(state.CurrentRound, {
-				Participants = Set(state.CurrentRound.Participants, userId, participant),
-			}),
-		})
+		end)
 	end,
 
-	removeParticipant = function(state: PlayersState, userId: string)
-		return Merge(state, {
-			CurrentRound = Merge(state.CurrentRound, {
-				Participants = RemoveKey(state.CurrentRound.Participants, userId),
-			}),
-		})
+	setParticipantBullets = function(state: PlayersState, participantId: string, bullets: number)
+		return updateParticipant(state, participantId, function(participant)
+			return Merge(participant, {
+				Bullets = math.max(0, bullets),
+			})
+		end)
 	end,
 
-	setRoundWinner = function(state: PlayersState, team: TeamColor)
-		return Merge(state, {
-			CurrentRound = Merge(state.CurrentRound, {
-				Winner = team,
-			}),
-		})
+	addParticipantBullets = function(state: PlayersState, participantId: string, amount: number)
+		return updateParticipant(state, participantId, function(participant)
+			return Merge(participant, {
+				Bullets = math.max(0, participant.Bullets + amount),
+			})
+		end)
 	end,
 
-	setParticipantCupId = function(state: PlayersState, userId: string, cupId: string)
-		local participant = state.CurrentRound.Participants[userId]
-		if not participant then
-			return state
-		end
-
-		return Merge(state, {
-			CurrentRound = Merge(state.CurrentRound, {
-				Participants = Set(
-					state.CurrentRound.Participants,
-					userId,
-					Merge(participant, {
-						CupId = cupId,
-					})
-				),
-			}),
-		})
+	setParticipantPendingAction = function(state: PlayersState, participantId: string, action: PendingAction)
+		return updateParticipant(state, participantId, function(participant)
+			return Merge(participant, {
+				PendingAction = action,
+			})
+		end)
 	end,
 
-	setParticipantAssignedKitchenId = function(state: PlayersState, userId: string, kitchenId: string)
-		local participant = state.CurrentRound.Participants[userId]
-		if not participant then
-			return state
-		end
-
-		return Merge(state, {
-			CurrentRound = Merge(state.CurrentRound, {
-				Participants = Set(
-					state.CurrentRound.Participants,
-					userId,
-					Merge(participant, {
-						AssignedKitchenId = kitchenId,
-					})
-				),
-			}),
-		})
+	setParticipantReady = function(state: PlayersState, participantId: string, isReady: boolean)
+		return updateParticipant(state, participantId, function(participant)
+			return Merge(participant, {
+				IsReady = isReady,
+			})
+		end)
 	end,
 
-	setParticipantActiveOrders = function(state: PlayersState, userId: string, orders: { string })
-		local participant = state.CurrentRound.Participants[userId]
-		if not participant then
-			return state
-		end
-
-		return Merge(state, {
-			CurrentRound = Merge(state.CurrentRound, {
-				Participants = Set(
-					state.CurrentRound.Participants,
-					userId,
-					Merge(participant, {
-						ActiveOrders = orders,
-					})
-				),
-			}),
-		})
+	addParticipantShield = function(state: PlayersState, participantId: string, amount: number)
+		return updateParticipant(state, participantId, function(participant)
+			return Merge(participant, {
+				PendingShields = math.max(0, participant.PendingShields + amount),
+			})
+		end)
 	end,
 
-	addParticipantPoint = function(state: PlayersState, userId: string, amount: number)
-		local participant = state.CurrentRound.Participants[userId]
-		if not participant then
-			return state
-		end
+	clearParticipantPending = function(state: PlayersState, participantId: string)
+		return updateParticipant(state, participantId, function(participant)
+			return Merge(participant, {
+				PendingAction = "None",
+				PendingShields = 0,
+				PendingTargets = {},
+				IsReady = false,
+			})
+		end)
+	end,
 
-		return Merge(state, {
-			CurrentRound = Merge(state.CurrentRound, {
-				Participants = Set(
-					state.CurrentRound.Participants,
-					userId,
-					Merge(participant, {
-						Points = participant.Points + amount,
-					})
-				),
-			}),
-		})
+	setParticipantTargetAllocation = function(
+		state: PlayersState,
+		participantId: string,
+		targetParticipantId: string,
+		amount: number
+	)
+		return updateParticipant(state, participantId, function(participant)
+			local nextTargets = participant.PendingTargets
+			if amount <= 0 then
+				nextTargets = RemoveKey(nextTargets, targetParticipantId)
+			else
+				nextTargets = Set(nextTargets, targetParticipantId, amount)
+			end
+
+			return Merge(participant, {
+				PendingTargets = nextTargets,
+			})
+		end)
+	end,
+
+	resetParticipantForRound = function(state: PlayersState, participantId: string, bullets: number)
+		return updateParticipant(state, participantId, function(participant)
+			return Merge(participant, {
+				IsAlive = true,
+				Bullets = math.max(0, bullets),
+				PendingAction = "None",
+				PendingShields = 0,
+				PendingTargets = {},
+				IsReady = false,
+			})
+		end)
+	end,
+
+	addPlayerKill = function(state: PlayersState, participantId: string, amount: number)
+		return updateParticipantPlayerData(state, participantId, function(data)
+			return Merge(data, {
+				Kills = math.max(0, data.Kills + amount),
+			})
+		end)
+	end,
+
+	addPlayerAssist = function(state: PlayersState, participantId: string, amount: number)
+		return updateParticipantPlayerData(state, participantId, function(data)
+			return Merge(data, {
+				Assists = math.max(0, data.Assists + amount),
+			})
+		end)
+	end,
+
+	addPlayerWin = function(state: PlayersState, participantId: string, amount: number)
+		return updateParticipantPlayerData(state, participantId, function(data)
+			return Merge(data, {
+				Wins = math.max(0, data.Wins + amount),
+			})
+		end)
 	end,
 }
+
 local producer = Reflex.createProducer(initialState, actions)
 
 return producer :: Reflex.Producer<PlayersState, PlayersActions>

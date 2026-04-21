@@ -61,7 +61,7 @@ local function SmallButton(props)
 		MinTextSize = 18,
 	})
 	props.children.UIScale = e("UIScale", {
-		Scale = scale,
+		Scale = props.Scale,
 	})
 	props.children.TextOverlay = props.KeybindText
 			and e("TextLabel", {

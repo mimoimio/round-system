@@ -11,6 +11,7 @@ local e = React.createElement
 local function RoundHUD(props)
 	local phase = props.Phase
 	local timeEnd = props.TimeEnd
+	local currentTurn = props.TurnIndex or 0
 	local assignedKitchenId = props.AssignedKitchenId
 	local activeOrders = props.ActiveOrders
 
@@ -66,7 +67,7 @@ local function RoundHUD(props)
 	}, {
 		Countdown = e(SmallText, {
 			-- Countdown = phase ~= "InProgress" and e(SmallText, {
-			Text = countdownText,
+			Text = string.format("Turn %d | %s", currentTurn, countdownText),
 			TextSize = 24,
 			TextXAlignment = Enum.TextXAlignment.Center,
 		}) or nil,
