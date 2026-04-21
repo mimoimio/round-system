@@ -108,7 +108,7 @@ local function killPlayerCharacter(participantId: string)
 		return
 	end
 
-	model:BreakJoints()
+	-- model:BreakJoints()
 end
 
 function ParticipantService.SyncParticipantsFromPlayers()

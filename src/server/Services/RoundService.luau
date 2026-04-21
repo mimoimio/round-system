@@ -7,6 +7,7 @@ local ResolutionService = require(script.Parent.ResolutionService)
 local TeleportService = require(script.Parent.TeleportService)
 local MapService = require(script.Parent.MapService)
 local PlayerSessions = require(ReplicatedStorage.Shared.producers.PlayerSessions)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local RoundService = {}
 
@@ -19,6 +20,27 @@ local WAITING_RECHECK_DURATION = 10
 local LOOP_TICK_SECONDS = 1
 local MIN_HUMAN_PLAYERS_TO_START = 1
 local WIN_REWARD_CASH = 10
+
+type ResolutionTargetAllocation = {
+	targetParticipantId: string,
+	amount: number,
+}
+
+type ResolutionActionEntry = {
+	participantId: string,
+	action: PlayerSessions.PendingAction,
+	isAlive: boolean,
+	bullets: number,
+	pendingShields: number,
+	targets: { ResolutionTargetAllocation },
+}
+
+type ResolutionSnapshotPayload = {
+	turnIndex: number,
+	phase: PlayerSessions.Phase,
+	dispatchedAt: number,
+	actions: { ResolutionActionEntry },
+}
 
 local function getActionInputDuration(turnIndex: number): number
 	local turnPenalty = math.max(0, turnIndex - 1)
@@ -52,7 +74,55 @@ local function transitionToActionInput()
 	PlayerSessions.setPhase("ActionInput", getActionInputDuration(nextTurnIndex))
 end
 
+local function buildResolutionSnapshot(): ResolutionSnapshotPayload
+	local currentRound = PlayerSessions:getState().CurrentRound
+	local sortedParticipantIds = {}
+	for participantId in currentRound.Participants do
+		table.insert(sortedParticipantIds, participantId)
+	end
+	table.sort(sortedParticipantIds)
+
+	local actions = {}
+	for _, participantId in sortedParticipantIds do
+		local participant = currentRound.Participants[participantId]
+		if participant then
+			local targetParticipantIds = {}
+			for targetParticipantId, amount in participant.PendingTargets do
+				if amount > 0 then
+					table.insert(targetParticipantIds, targetParticipantId)
+				end
+			end
+			table.sort(targetParticipantIds)
+
+			local targets = {}
+			for _, targetParticipantId in targetParticipantIds do
+				table.insert(targets, {
+					targetParticipantId = targetParticipantId,
+					amount = participant.PendingTargets[targetParticipantId],
+				})
+			end
+
+			table.insert(actions, {
+				participantId = participantId,
+				action = participant.PendingAction,
+				isAlive = participant.IsAlive,
+				bullets = participant.Bullets,
+				pendingShields = participant.PendingShields,
+				targets = targets,
+			})
+		end
+	end
+
+	return {
+		turnIndex = currentRound.TurnIndex,
+		phase = currentRound.Phase,
+		dispatchedAt = os.clock(),
+		actions = actions,
+	}
+end
+
 local function transitionToResolution()
+	Remotes.ResolutionSnapshot:FireAllClients(buildResolutionSnapshot())
 	ResolutionService.ResolveCurrentTurn()
 	PlayerSessions.setPhase("Resolution", RESOLUTION_DURATION)
 end

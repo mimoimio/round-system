@@ -86,6 +86,14 @@ local function CombatFeedback()
 	return remote
 end
 
+local function ResolutionSnapshot()
+	local remote = isserver and Instance.new("RemoteEvent")
+		or ReplicatedStorage.Shared.Events:WaitForChild("ResolutionSnapshot")
+	remote.Name = "ResolutionSnapshot"
+	remote.Parent = ReplicatedStorage.Shared.Events
+	return remote
+end
+
 return {
 	start = Start() :: RemoteEvent,
 	dispatch = Dispatch() :: RemoteEvent,
@@ -98,4 +106,5 @@ return {
 	InteractStation = InteractStation() :: RemoteEvent,
 	PistolInput = PistolInput() :: RemoteEvent,
 	CombatFeedback = CombatFeedback() :: RemoteEvent,
+	ResolutionSnapshot = ResolutionSnapshot() :: RemoteEvent,
 }

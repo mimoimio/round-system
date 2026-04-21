@@ -71,7 +71,7 @@ function MapService.start()
 	end, function(phase: PlayerSessions.Phase, previousPhase: PlayerSessions.Phase)
 		if phase == "Intermission" then
 			buildMap()
-		elseif (phase == "WaitingForPlayers" or phase == "Ended") and previousPhase ~= phase then
+		elseif (phase == "WaitingForPlayers") and previousPhase ~= phase then
 			destroyMap()
 		end
 	end)

@@ -20,6 +20,8 @@ export type InputMode = "Shield" | "Aim" | "Load" | "None"
 local localPlayer = Players.LocalPlayer
 local localParticipantId = "Player_" .. tostring(localPlayer.UserId)
 
+local icon = game.Players.LocalPlayer:GetMouse().Icon
+
 local function RoundControlsRow()
 	local roundState, setRoundState = useState(function()
 		return PlayerSessions:getState().CurrentRound
@@ -58,8 +60,10 @@ local function RoundControlsRow()
 	useEffect(function()
 		if isParticipantAlive then
 			UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+			game.Players.LocalPlayer:GetMouse().Icon = ""
 		else
 			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+			game.Players.LocalPlayer:GetMouse().Icon = icon
 		end
 	end, { isParticipantAlive })
 

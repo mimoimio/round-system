@@ -59,7 +59,7 @@ end
 local function circlePointOnArena(arena: BasePart, index: number, total: number): CFrame
 	local radius = math.max(4, math.min(arena.Size.X, arena.Size.Z) * 0.5 - 4)
 	local angle = ((index - 1) / total) * math.pi * 2
-	local offset = Vector3.new(math.cos(angle) * radius, arena.Size.Y * 0.5 + 3, math.sin(angle) * radius)
+	local offset = Vector3.new(math.cos(angle) * radius, arena.Size.Y * 0.5 + 5, math.sin(angle) * radius)
 	return arena.CFrame + offset
 end
 

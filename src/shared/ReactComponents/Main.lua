@@ -14,6 +14,7 @@ local RoundStatusRow = require(script.Parent.RoundStatusRow)
 local RoundControlsRow = require(script.Parent.RoundControlsRow)
 local TargetAllocationsPanel = require(script.Parent.TargetAllocationsPanel)
 local RoundPhaseProgressBar = require(script.Parent.RoundPhaseProgressBar)
+local ResolutionActionAnimations = require(script.Parent.ResolutionActionAnimations)
 local useToast = require(script.Parent.Toasts).useToast
 local useCombatToasts = require(script.Parent.hooks.useCombatToasts)
 
@@ -59,6 +60,7 @@ local function Main(_props)
 			PaddingTop = UDim.new(0,12),
 			PaddingBottom = UDim.new(0,12),
 		}),
+		ResolutionAnimations = e(ResolutionActionAnimations),
 		RoundStartFlash = e(RoundStartFlash),
 		Progress = e(RoundPhaseProgressBar),
 		Bullets = e(Bullets),

@@ -26,7 +26,6 @@ local function RoundPhaseProgressBar()
 		end)
 		local cr = PlayerSessions:getState().CurrentRound
 		setRoundState(cr)
-		warn("setRound", cr)
 		return function()
 			unsubscribeRound()
 		end
