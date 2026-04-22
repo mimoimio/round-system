@@ -80,14 +80,17 @@ local function Targets()
 				if model then
 					local adornee = getAdorneeFromModel(model)
 					if adornee then
-						
 						children[targetParticipantId] = e("BillboardGui", {
 							Adornee = adornee,
 							Size = UDim2.fromScale(4, 1),
 							StudsOffset = Vector3.new(0, 2.6, 0),
 							AlwaysOnTop = true,
 						}, {
-							bulets = e(Bullets, { Amount = amount }),
+							bulets = e(Bullets, {
+								Amount = amount,
+								Position = UDim2.new(0.5, 0, 0.5, 0),
+								AnchorPoint = Vector2.new(0.5, 0.5),
+							}),
 							Highlight = e("Highlight", {
 								Adornee = model,
 							}),
@@ -123,7 +126,11 @@ local function Targets()
 				-- StudsOffset = Vector3.new(0, 2.6, 0),
 				AlwaysOnTop = true,
 			}, {
-				Bullets = e(Bullets, { Amount = 1 }),
+				Bullets = e(Bullets, {
+					Amount = 1,
+					Position = UDim2.new(0.5, 0, 0.5, 0),
+					AnchorPoint = Vector2.new(0.5, 0.5),
+				}),
 				Highlight = e("Highlight", {
 					Adornee = model,
 					FillColor = Color3.new(1, 0.8, 0),

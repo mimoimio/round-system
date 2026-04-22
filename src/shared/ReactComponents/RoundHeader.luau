@@ -22,7 +22,7 @@ local function RoundHeader()
 	local participant, setParticipant = useState(function()
 		return PlayerSessions:getState().CurrentRound.Participants[localParticipantId]
 	end)
-	local now, setNow = useState(os.time())
+	local now, setNow = useState(workspace:GetServerTimeNow())
 
 	useEffect(function()
 		local unsubscribeRound = PlayerSessions:subscribe(function(state: PlayerSessions.PlayersState)
@@ -38,7 +38,7 @@ local function RoundHeader()
 		end)
 
 		local heartbeat = RunService.Heartbeat:Connect(function()
-			setNow(os.time())
+			setNow(workspace:GetServerTimeNow())
 		end)
 
 		return function()

@@ -1,3 +1,4 @@
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -61,9 +62,11 @@ local function RoundControlsRow()
 		if isParticipantAlive then
 			UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
 			game.Players.LocalPlayer:GetMouse().Icon = ""
+			GuiService.TouchControlsEnabled = false
 		else
 			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 			game.Players.LocalPlayer:GetMouse().Icon = icon
+			GuiService.TouchControlsEnabled = true
 		end
 	end, { isParticipantAlive })
 

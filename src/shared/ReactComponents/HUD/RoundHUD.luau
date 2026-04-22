@@ -15,11 +15,11 @@ local function RoundHUD(props)
 	local assignedKitchenId = props.AssignedKitchenId
 	local activeOrders = props.ActiveOrders
 
-	local now, setNow = React.useBinding(os.time())
+	local now, setNow = React.useBinding(workspace:GetServerTimeNow())
 
 	React.useEffect(function()
 		local connection = RunService.Heartbeat:Connect(function()
-			setNow(os.time())
+			setNow(workspace:GetServerTimeNow())
 		end)
 
 		return function()

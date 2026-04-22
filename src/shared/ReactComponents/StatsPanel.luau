@@ -36,12 +36,14 @@ local function StatItem(label: string, value: number, layoutOrder: number)
 			TextSize = 14,
 			TextXAlignment = Enum.TextXAlignment.Center,
 			LayoutOrder = 1,
+			Font = Enum.Font.Arcade,
 		}),
 		Value = e(SmallText, {
 			Text = tostring(value),
 			TextSize = 20,
 			TextXAlignment = Enum.TextXAlignment.Center,
 			LayoutOrder = 2,
+			Font = Enum.Font.Arcade,
 		}),
 	})
 end

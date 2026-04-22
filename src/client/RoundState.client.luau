@@ -38,6 +38,6 @@
 -- end)
 
 -- RunService.RenderStepped:Connect(function()
--- 	local remaining = math.max(0, currentRound.TimeEnd - os.time())
+-- 	local remaining = math.max(0, currentRound.TimeEnd - workspace:GetServerTimeNow())
 -- 	label.Text = string.format("Phase: %s | Time: %ds", currentRound.Phase, remaining)
 -- end)

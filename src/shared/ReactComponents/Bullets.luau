@@ -27,7 +27,9 @@ local function Bullets(props)
 		end
 	end, {})
 
-	local amount = if props and type(props.Amount) == "number" then props.Amount else if participant then participant.Bullets else 0
+	local amount = if props and type(props.Amount) == "number"
+		then props.Amount
+		else if participant then participant.Bullets else 0
 	local children = {}
 	for i = 1, amount do
 		children[i] = e(Bullet)
@@ -35,10 +37,9 @@ local function Bullets(props)
 	return e(HStack, {
 		AutomaticSize = Enum.AutomaticSize.XY,
 		Size = UDim2.fromScale(0, 0),
-
-		AnchorPoint = Vector2.new(0, 1),
+		AnchorPoint = props.AnchorPoint or Vector2.new(0, 1),
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		Position = UDim2.new(0, 0, 1, 0),
+		Position = props.Position or UDim2.new(0, 0, 1, 0),
 		Padding = {
 			All = UDim.new(0, 8),
 		},

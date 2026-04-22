@@ -16,10 +16,10 @@ local SmallText = function(props)
 		TextStrokeTransparency = 0,
 		Text = props.Text,
 		AnchorPoint = props.AnchorPoint,
-		Position = props.Position ,
+		Position = props.Position,
 		Size = props.Size,
 		TextScaled = props.TextScaled,
-		Font = "FredokaOne",
+		Font = props.Font or "FredokaOne",
 		LayoutOrder = props.LayoutOrder,
 	}, children)
 end

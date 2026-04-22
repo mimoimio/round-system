@@ -3,8 +3,8 @@
 | **`WaitingForPlayers`** | Continues until `AliveParticipants >= 2` | Wait for players. Wipe previous round data. | **`RoundService`** (State clearing, Phase transition) | ➔ **`Intermission`** |
 | **`Intermission`** | `serverTimeNow >= TimeEnd` (e.g., 10 seconds) | Pull players into the arena. Reset everyone's `Bullets` to 0, and `IsAlive` to true. | **`RoundService`** (Phase transition)<br>**`TeleportService`** (Arena pull)<br>**`ParticipantService`** (Stats reset) | ➔ **`ActionInput`** |
 | **`ActionInput`** | `serverTimeNow >= TimeEnd` (e.g., 10s) **OR** All alive players have locked in | Listen for client intent remotes. Clear previous `PendingActions` at the start of this phase. | **`RoundService`** (Phase/Lock-in checks)<br>**`InputService`** (Receiving remotes) | ➔ **`Resolution`** |
-| **`Resolution`** | `os.time() >= TimeEnd` (e.g., 4s for animations) | Run the math. Deduct ammo, check shields vs bullets, execute kills. Check win condition. | **`RoundService`** (Phase/Win condition)<br>**`ResolutionService`** (Math/Ammo/Kills) | ➔ **`ActionInput`** (If > 1 alive)<br>➔ **`Ended`** (If <= 1 alive) |
-| **`Ended`** | `os.time() >= TimeEnd` (e.g., 5 seconds) | Dispatch `awardWinnerCash()`. | **`RoundService`** (Phase transition)<br>**`RewardService`** (Cash distribution) | ➔ **`WaitingForPlayers`** |
+| **`Resolution`** | `workspace:GetServerTimeNow() >= TimeEnd` (e.g., 4s for animations) | Run the math. Deduct ammo, check shields vs bullets, execute kills. Check win condition. | **`RoundService`** (Phase/Win condition)<br>**`ResolutionService`** (Math/Ammo/Kills) | ➔ **`ActionInput`** (If > 1 alive)<br>➔ **`Ended`** (If <= 1 alive) |
+| **`Ended`** | `workspace:GetServerTimeNow() >= TimeEnd` (e.g., 5 seconds) | Dispatch `awardWinnerCash()`. | **`RoundService`** (Phase transition)<br>**`RewardService`** (Cash distribution) | ➔ **`WaitingForPlayers`** |
 
 
 "Server-Authoritative" approach. By removing the local draft state, you guarantee that the client and server never fall out of sync, even if it means the player has to wait for network ping to see their UI update. 
@@ -54,3 +54,6 @@ Because the server is recording every click live, locking in is no longer requir
 * **The Orchestrator:** Your `RoundService` loop, which is ticking every second, checks the state. If `TimeEnd` is reached, it moves to `Resolution`. However, if it checks the state and sees that *every* alive player has `IsReady == true`, it immediately cuts the timer short and jumps straight to `Resolution`.
 
 This architecture is incredibly safe. It makes cheating impossible because the client is reduced to a dumb terminal that simply asks the server for permission every time the mouse is clicked.
+
+
+Animations

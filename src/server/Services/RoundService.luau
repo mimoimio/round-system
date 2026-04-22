@@ -12,11 +12,11 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local RoundService = {}
 
 local INTERMISSION_DURATION = 4
-local ACTION_INPUT_DURATION = 8
-local MIN_ACTION_INPUT_DURATION = 4
-local RESOLUTION_DURATION = 2
+local ACTION_INPUT_DURATION = 5
+local MIN_ACTION_INPUT_DURATION = 5
+local RESOLUTION_DURATION = 1
 local ENDED_DURATION = 5
-local WAITING_RECHECK_DURATION = 10
+local WAITING_RECHECK_DURATION = 5
 local LOOP_TICK_SECONDS = 1
 local MIN_HUMAN_PLAYERS_TO_START = 1
 local WIN_REWARD_CASH = 10
@@ -54,14 +54,14 @@ end
 local function transitionToWaitingForPlayers()
 	PlayerSessions.setRoundWinnerParticipant(nil)
 	PlayerSessions.setRoundTurnIndex(0)
-	PlayerSessions.setPhase("WaitingForPlayers", WAITING_RECHECK_DURATION)
+	PlayerSessions.setPhase("WaitingForPlayers", WAITING_RECHECK_DURATION + workspace:GetServerTimeNow())
 end
 
 local function transitionToIntermission()
 	MapService.BuildMap()
 	PlayerSessions.setRoundWinnerParticipant(nil)
 	PlayerSessions.setRoundTurnIndex(0)
-	PlayerSessions.setPhase("Intermission", INTERMISSION_DURATION)
+	PlayerSessions.setPhase("Intermission", INTERMISSION_DURATION + workspace:GetServerTimeNow())
 	ParticipantService.SyncParticipantsFromPlayers()
 	ParticipantService.ResetParticipantsForNewRound()
 	TeleportService.TeleportParticipantsToArena()
@@ -71,7 +71,7 @@ local function transitionToActionInput()
 	local nextTurnIndex = PlayerSessions:getState().CurrentRound.TurnIndex + 1
 	PlayerSessions.setRoundTurnIndex(nextTurnIndex)
 	ParticipantService.ClearTurnInputs()
-	PlayerSessions.setPhase("ActionInput", getActionInputDuration(nextTurnIndex))
+	PlayerSessions.setPhase("ActionInput", getActionInputDuration(nextTurnIndex) + workspace:GetServerTimeNow())
 end
 
 local function buildResolutionSnapshot(): ResolutionSnapshotPayload
@@ -124,7 +124,9 @@ end
 local function transitionToResolution()
 	Remotes.ResolutionSnapshot:FireAllClients(buildResolutionSnapshot())
 	ResolutionService.ResolveCurrentTurn()
-	PlayerSessions.setPhase("Resolution", RESOLUTION_DURATION)
+	local state = PlayerSessions:getState()
+
+	PlayerSessions.setPhase("Resolution", RESOLUTION_DURATION + workspace:GetServerTimeNow())
 end
 
 local function awardWinnerAndFinalize()
@@ -139,7 +141,7 @@ local function awardWinnerAndFinalize()
 		end
 	end
 
-	PlayerSessions.setPhase("Ended", ENDED_DURATION)
+	PlayerSessions.setPhase("Ended", ENDED_DURATION + workspace:GetServerTimeNow())
 end
 
 local function clearRoundParticipants()
@@ -151,6 +153,11 @@ end
 local function runLoop()
 	while true do
 		local currentRound = PlayerSessions:getState().CurrentRound
+		local phase = currentRound.Phase
+
+		if phase == "Intermission" or phase == "ActionInput" or phase == "Resolution" then
+			TeleportService.EnsureParticipantsInArenaBounds()
+		end
 
 		-- warn("currentRound",currentRound)
 
@@ -160,17 +167,17 @@ local function runLoop()
 			continue
 		end
 
-		if os.time() < currentRound.TimeEnd then
+		if workspace:GetServerTimeNow() < currentRound.TimeEnd then
 			task.wait(LOOP_TICK_SECONDS)
 			continue
 		end
 
-		local phase = PlayerSessions:getState().CurrentRound.Phase
+		phase = PlayerSessions:getState().CurrentRound.Phase
 		if phase == "WaitingForPlayers" then
 			if getActivePlayerCount() >= MIN_HUMAN_PLAYERS_TO_START then
 				transitionToIntermission()
 			else
-				PlayerSessions.setPhase("WaitingForPlayers", WAITING_RECHECK_DURATION)
+				PlayerSessions.setPhase("WaitingForPlayers", WAITING_RECHECK_DURATION + workspace:GetServerTimeNow())
 			end
 		elseif phase == "Intermission" then
 			transitionToActionInput()
@@ -195,7 +202,7 @@ end
 
 function RoundService.initialize()
 	PlayerSessions.setRoundTurnIndex(0)
-	PlayerSessions.setPhase("WaitingForPlayers", WAITING_RECHECK_DURATION)
+	PlayerSessions.setPhase("WaitingForPlayers", WAITING_RECHECK_DURATION + workspace:GetServerTimeNow())
 end
 
 function RoundService.start()

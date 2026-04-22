@@ -41,12 +41,28 @@ local function getParticipantId(player: Player): string
 end
 
 local function unregisterParticipantModel(participantId: string)
+	local model = participantModels[participantId]
+	if model then
+		warn("removing model", participantId)
+
+		local hum: Humanoid = model:FindFirstChild("Humanoid")
+		if hum then
+			warn("humanoid", participantId)
+			hum.JumpHeight = 7.2
+			hum.WalkSpeed = 16
+		end
+	end
 	participantModels[participantId] = nil
 end
 
 local function registerParticipantModel(participantId: string, model: Model?)
 	if model then
 		participantModels[participantId] = model
+		local hum: Humanoid = model:FindFirstChild("Humanoid")
+		if hum then
+			hum.WalkSpeed = 0
+			hum.JumpHeight = 0
+		end
 	else
 		unregisterParticipantModel(participantId)
 	end
@@ -80,6 +96,11 @@ local function ensureDummyModel(dummyParticipantId: string): Model
 		local clone = rigTemplate:Clone()
 		clone.Name = dummyParticipantId
 		clone.Parent = workspace
+		local hum = clone:FindFirstChild("Humanoid")
+		if hum then
+			hum.BreakJointsOnDeath = false
+		end
+
 		return clone
 	end
 
@@ -99,14 +120,19 @@ local function killPlayerCharacter(participantId: string)
 	if not (model and model.Parent) then
 		return
 	end
-
-	local humanoid = model:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		if humanoid.Health > 0 then
-			humanoid.Health = 0
+	task.delay(0.5, function()
+		if model and model:FindFirstChild("Humanoid") then
+			model.Humanoid.Health = 0
 		end
-		return
-	end
+	end)
+
+	-- local humanoid = model:FindFirstChildOfClass("Humanoid")
+	-- if humanoid then
+	-- 	if humanoid.Health > 0 then
+	-- 		humanoid.Health = 0
+	-- 	end
+	-- 	return
+	-- end
 
 	-- model:BreakJoints()
 end
@@ -246,11 +272,19 @@ function ParticipantService.initialize()
 			if previousParticipant.IsAlive and nextParticipant and not nextParticipant.IsAlive then
 				if isDummyParticipant(participantId) then
 					local model = participantModels[participantId]
-					if model and model.Parent then
-						model:Destroy()
-					end
-					unregisterParticipantModel(participantId)
+					task.delay(0.5, function()
+						if model and model:FindFirstChild("Humanoid") then
+							model.Humanoid.Health = 0
+						end
+					end)
+					task.delay(2, function()
+						if model and model.Parent then
+							model:Destroy()
+						end
+						unregisterParticipantModel(participantId)
+					end)
 				else
+					unregisterParticipantModel(participantId)
 					killPlayerCharacter(participantId)
 				end
 			end

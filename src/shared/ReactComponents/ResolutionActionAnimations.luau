@@ -206,14 +206,18 @@ local function ResolutionActionAnimations()
 			elseif entry.action == "Shield" then
 				playShieldAction(anchor)
 			elseif entry.action == "Shoot" then
+				warn("shoot")
 				for targetIndex, target in entry.targets do
+					warn("targetIndex", targetIndex)
 					task.delay((targetIndex - 1) * MULTI_TARGET_STAGGER_SECONDS, function()
 						if sequenceTokenRef.current ~= sequenceToken then
+							warn(sequenceTokenRef.current, sequenceToken)
 							return
 						end
 						local targetModel = getModelFromParticipantId(target.targetParticipantId)
 						local targetAnchor = getAnchorPart(targetModel)
 						if not targetAnchor then
+							warn("not targetAnchor", targetAnchor, targetModel, target.targetParticipantId)
 							return
 						end
 						playShootAction(anchor, targetAnchor, target.amount)
@@ -235,6 +239,7 @@ local function ResolutionActionAnimations()
 
 		local snapshotConnection = Remotes.ResolutionSnapshot.OnClientEvent:Connect(
 			function(snapshot: ResolutionSnapshotPayload)
+				-- warn("snapshot", snapshot)
 				if type(snapshot.turnIndex) ~= "number" then
 					return
 				end

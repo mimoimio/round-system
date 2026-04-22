@@ -197,7 +197,7 @@ function ResolutionService.ResolveCurrentTurn()
 		end
 	end
 
-	local state:PlayerSessions.PlayersState = PlayerSessions:getState()
+	local state: PlayerSessions.PlayersState = PlayerSessions:getState()
 	for targetId, shooters in contributorsByTarget do
 		local target = participants[targetId]
 		if target and not PlayerSessions:getState().CurrentRound.Participants[targetId].IsAlive then

@@ -90,6 +90,7 @@ function InputService.initialize()
 			end
 
 			if request == "Load" then
+				-- warn("request Load")
 				PlayerSessions.clearParticipantPending(participantId)
 				PlayerSessions.setParticipantPendingAction(participantId, "Load")
 				PlayerSessions.setParticipantReady(participantId, false)
@@ -98,6 +99,7 @@ function InputService.initialize()
 			end
 
 			if request == "Aim" then
+				-- warn("request Aim")
 				if participant.PendingAction == "Shoot" then
 					return
 				end
@@ -109,6 +111,7 @@ function InputService.initialize()
 			end
 
 			if request == "ToggleReady" then
+				-- warn("request ToggleReady")
 				PlayerSessions.setParticipantReady(participantId, not participant.IsReady)
 				logInput(
 					string.format("Accepted ToggleReady for %s -> %s", participantId, tostring(not participant.IsReady))
@@ -117,6 +120,7 @@ function InputService.initialize()
 			end
 
 			if request == "AddShield" then
+				-- warn("request AddShield")
 				setShieldMode(participantId, participant)
 				local updated = PlayerSessions:getState().CurrentRound.Participants[participantId]
 				if updated then
@@ -128,6 +132,7 @@ function InputService.initialize()
 			end
 
 			if request == "RemoveShield" then
+				-- warn("request RemoveShield")
 				if participant.PendingAction ~= "Shield" or participant.PendingShields <= 0 then
 					logInput(
 						string.format(
@@ -150,6 +155,7 @@ function InputService.initialize()
 			end
 
 			if request == "AddTarget" then
+				-- warn("request AddTarget")
 				if type(targetParticipantId) ~= "string" or targetParticipantId == "" then
 					logInput(string.format("Rejected AddTarget for %s: missing targetParticipantId", participantId))
 					return
@@ -211,6 +217,7 @@ function InputService.initialize()
 			end
 
 			if request == "RemoveTarget" then
+				-- warn("request RemoveTarget")
 				if type(targetParticipantId) ~= "string" or targetParticipantId == "" then
 					logInput(string.format("Rejected RemoveTarget for %s: missing targetParticipantId", participantId))
 					return

@@ -42,7 +42,7 @@ local function buildMap()
 	arena.Anchored = true
 	arena.CanCollide = true
 	arena.Size = Vector3.new(40, 1, 40)
-	arena.CFrame = CFrame.new(0, 10, 0)
+	arena.CFrame = CFrame.new(0, -5, 80)
 	arena.TopSurface = Enum.SurfaceType.Smooth
 	arena.BottomSurface = Enum.SurfaceType.Smooth
 	arena.Material = Enum.Material.Concrete

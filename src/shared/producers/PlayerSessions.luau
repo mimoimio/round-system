@@ -42,7 +42,7 @@ export type RoundState = {
 export type PlayerEntity = {
 	Data: Data,
 	Character: Model?,
-	Plot: Model?,
+	PlayerPhase: "Ready" | "Not Ready",
 }
 
 export type PlayersActions = {
@@ -150,7 +150,24 @@ local actions = {
 		return Merge(state, {
 			players = Set(state.players, playerId, {
 				Data = ensureCombatStats(data),
+				PlayerPhase = "Not Ready",
 			}),
+		})
+	end,
+
+	setPlayerPhase = function(state: PlayersState, playerId: string, playerPhase: "Ready" | "Not Ready")
+		local playerEntity = state.players[playerId]
+		if not playerEntity then
+			return state
+		end
+		return Merge(state, {
+			players = Set(
+				state.players,
+				playerId,
+				Merge(playerEntity, {
+					PlayerPhase = playerPhase,
+				})
+			),
 		})
 	end,
 
@@ -253,12 +270,12 @@ local actions = {
 		})
 	end,
 
-	setPhase = function(state: PlayersState, newPhase: Phase, duration: number)
-		local clampedDuration = math.max(0, duration)
+	setPhase = function(state: PlayersState, newPhase: Phase, timeEnd: number)
+		-- local clampedDuration = math.max(0, timeEnd)
 		return Merge(state, {
 			CurrentRound = Merge(state.CurrentRound, {
 				Phase = newPhase,
-				TimeEnd = os.time() + clampedDuration,
+				TimeEnd = timeEnd,
 			}),
 		})
 	end,

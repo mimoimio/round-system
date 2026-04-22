@@ -32,7 +32,7 @@ local function RoundPhaseProgressBar()
 	end, {})
 
 	useEffect(function()
-		local remainingAtSync = math.max(0, roundState.TimeEnd - os.time())
+		local remainingAtSync = math.max(0, roundState.TimeEnd - workspace:GetServerTimeNow())
 		phaseDurationRef.current = math.max(1, remainingAtSync)
 		phaseStartClockRef.current = os.clock()
 		setProgressBinding(0)
