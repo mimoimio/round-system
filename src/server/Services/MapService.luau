@@ -7,6 +7,7 @@ local MapService = {}
 
 local MAP_CONTAINER_NAME = "MapContainer"
 local ARENA_NAME = "Arena"
+local MAP_DIAMETER = 50
 
 local function getOrCreateMapContainer(): Folder
 	local existing = workspace:FindFirstChild(MAP_CONTAINER_NAME)
@@ -41,13 +42,28 @@ local function buildMap()
 	arena.Name = ARENA_NAME
 	arena.Anchored = true
 	arena.CanCollide = true
-	arena.Size = Vector3.new(40, 1, 40)
+	arena.Size = Vector3.new(MAP_DIAMETER, 1, MAP_DIAMETER)
 	arena.CFrame = CFrame.new(0, -5, 80)
 	arena.TopSurface = Enum.SurfaceType.Smooth
 	arena.BottomSurface = Enum.SurfaceType.Smooth
 	arena.Material = Enum.Material.Concrete
 	arena.Color = Color3.fromRGB(120, 120, 120)
 	arena.Parent = container
+	arena.CanCollide = false
+	arena.Transparency = 1
+
+	local ActualArena = Instance.new("Part")
+	ActualArena.Name = ARENA_NAME
+	ActualArena.Anchored = true
+	ActualArena.CanCollide = true
+	ActualArena.Size = Vector3.new(1, MAP_DIAMETER, MAP_DIAMETER)
+	ActualArena.CFrame = CFrame.new(0, -5, 80) * CFrame.Angles(0, 0, math.pi / 2)
+	ActualArena.Shape = "Cylinder"
+	ActualArena.TopSurface = Enum.SurfaceType.Smooth
+	ActualArena.BottomSurface = Enum.SurfaceType.Smooth
+	ActualArena.Material = Enum.Material.Concrete
+	ActualArena.Color = Color3.fromRGB(120, 120, 120)
+	ActualArena.Parent = arena
 end
 
 local function destroyMap()

@@ -6,48 +6,94 @@ local ServerStorage = game:GetService("ServerStorage")
 local PlayerSessions = require(ReplicatedStorage.Shared.producers.PlayerSessions)
 
 local ParticipantService = {}
-
 local STARTING_BULLETS = 0
 local DUMMY_PARTICIPANT_IDS = {
 	"Dummy_A1",
 	"Dummy_A2",
 	"Dummy_A3",
 	"Dummy_A4",
-	-- "Dummy_A5",
-	-- "Dummy_A6",
-	-- "Dummy_A7",
-	-- "Dummy_A8",
-	-- "Dummy_A9",
-	-- "Dummy_notscareme",
-	-- "Dummy_getthroughit",
-	-- "Dummy_getthroughme",
-	-- "Dummy_notthinkingthat",
-	-- "Dummy_notdoit",
-	-- "Dummy_befindinsomeone",
-	-- "Dummy_mnotthatstupid",
-	-- "Dummy_nextticket",
-	-- "Dummy_nexttrain",
-	-- "Dummy_Idoit",
-	-- "Dummy_wannathinkthat",
-	-- "Dummy_Happen",
+	"Dummy_A5",
+	"Dummy_A6",
+	"Dummy_A7",
+	"Dummy_A8",
+	"Dummy_A9",
+	"Dummy_notscareme",
+	"Dummy_getthroughit",
+	"Dummy_getthroughme",
+	"Dummy_notthinkingthat",
+	"Dummy_notdoit",
+	"Dummy_befindinsomeone",
+	"Dummy_mnotthatstupid",
+	"Dummy_nextticket",
+	"Dummy_nexttrain",
+	"Dummy_Idoit",
+	"Dummy_wannathinkthat",
+	"Dummy_Happen",
+	"Dummy_A30",
+	"Dummy_A40",
+	"Dummy_A50",
+	"Dummy_A60",
+	"Dummy_A70",
+	"Dummy_A80",
+	"Dummy_A90",
+	"Dummy_notscareme0",
+	"Dummy_getthroughit0",
+	"Dummy_getthroughme0",
+	"Dummy_notthinkingthat0",
+	"Dummy_notdoit0",
+	"Dummy_befindinsomeone0",
+	"Dummy_mnotthatstupid0",
+	"Dummy_nextticket0",
+	"Dummy_nexttrain0",
+	"Dummy_Idoit0",
+	"Dummy_wannathinkthat0",
+	"Dummy_Happen0",
+	"Dummy_getthroughme0a",
+	"Dummy_notthinkingthat0a",
+	"Dummy_notdoit0a",
+	"Dummy_befindinsomeone0a",
+	"Dummy_mnotthatstupid0a",
+	"Dummy_nextticket0a",
+	"Dummy_nexttrain0a",
+	"Dummy_Idoit0a",
+	"Dummy_wannathinkthat0a",
+	"Dummy_Happen0a",
 }
 local DUMMY_PLAYER_ID = "Dummy"
 local DUMMY_RIG_NAME = "DummyRig"
 
 local participantModels: { [string]: Model } = {}
+local randomGenerator = Random.new()
 
 local function getParticipantId(player: Player): string
 	return "Player_" .. tostring(player.UserId)
 end
 
+local function getPlayerFromParticipantId(participantId: string): Player?
+	local userIdString = string.match(participantId, "^Player_(%d+)$")
+	if not userIdString then
+		return nil
+	end
+
+	local userId = tonumber(userIdString)
+	if not userId then
+		return nil
+	end
+
+	return Players:GetPlayerByUserId(userId)
+end
+
+local function shouldTrackPlayerParticipantModel(participantId: string): boolean
+	local participant = PlayerSessions:getState().CurrentRound.Participants[participantId]
+	return participant ~= nil and participant.IsAlive
+end
+
 local function unregisterParticipantModel(participantId: string)
 	local model = participantModels[participantId]
 	if model then
-		warn("removing model", participantId)
-
 		local hum: Humanoid = model:FindFirstChild("Humanoid")
 		if hum then
-			warn("humanoid", participantId)
+			-- warn("humanoid", participantId)
 			hum.JumpHeight = 7.2
 			hum.WalkSpeed = 16
 		end
@@ -63,6 +109,15 @@ local function registerParticipantModel(participantId: string, model: Model?)
 			hum.WalkSpeed = 0
 			hum.JumpHeight = 0
 		end
+	else
+		unregisterParticipantModel(participantId)
+	end
+end
+
+local function refreshPlayerCharacterModel(player: Player, character: Model?)
+	local participantId = getParticipantId(player)
+	if shouldTrackPlayerParticipantModel(participantId) and character then
+		registerParticipantModel(participantId, character)
 	else
 		unregisterParticipantModel(participantId)
 	end
@@ -115,6 +170,19 @@ local function isDummyParticipant(participantId: string): boolean
 	return string.sub(participantId, 1, 6) == "Dummy_"
 end
 
+local function getAliveNonSelfParticipantIds(
+	participants: { [string]: PlayerSessions.ParticipantEntity },
+	participantId: string
+): { string }
+	local ids = {}
+	for targetParticipantId, targetParticipant in participants do
+		if targetParticipantId ~= participantId and targetParticipant.IsAlive then
+			table.insert(ids, targetParticipantId)
+		end
+	end
+	return ids
+end
+
 local function killPlayerCharacter(participantId: string)
 	local model = participantModels[participantId]
 	if not (model and model.Parent) then
@@ -147,10 +215,7 @@ function ParticipantService.SyncParticipantsFromPlayers()
 			PlayerSessions.addParticipant(tostring(player.UserId), participantId)
 		end
 
-		local character = player.Character
-		if character then
-			registerParticipantModel(participantId, character)
-		end
+		refreshPlayerCharacterModel(player, player.Character)
 	end
 
 	local onlineByParticipantId: { [string]: boolean } = {}
@@ -193,6 +258,51 @@ end
 function ParticipantService.ClearTurnInputs()
 	for participantId in PlayerSessions:getState().CurrentRound.Participants do
 		PlayerSessions.clearParticipantPending(participantId)
+	end
+end
+
+function ParticipantService.AssignRandomDummyInputsForTurn()
+	local participants = PlayerSessions:getState().CurrentRound.Participants
+
+	for participantId, participant in participants do
+		if not participant.IsAlive or not isDummyParticipant(participantId) then
+			continue
+		end
+
+		if participant.IsReady then
+			continue
+		end
+
+		PlayerSessions.clearParticipantPending(participantId)
+
+		local possibleTargets = getAliveNonSelfParticipantIds(participants, participantId)
+		local canShoot = participant.Bullets > 0 and #possibleTargets > 0
+		local roll = randomGenerator:NextNumber()
+
+		if canShoot and roll < 0.45 then
+			-- warn("SHOOT")
+			PlayerSessions.setParticipantPendingAction(participantId, "Shoot")
+			local shotCount = randomGenerator:NextInteger(1, participant.Bullets)
+			for _ = 1, shotCount do
+				local targetIndex = randomGenerator:NextInteger(1, #possibleTargets)
+				local targetParticipantId = possibleTargets[targetIndex]
+				local currentParticipant = PlayerSessions:getState().CurrentRound.Participants[participantId]
+				if not currentParticipant then
+					break
+				end
+				local currentAmount = currentParticipant.PendingTargets[targetParticipantId] or 0
+				PlayerSessions.setParticipantTargetAllocation(participantId, targetParticipantId, currentAmount + 1)
+			end
+		elseif roll < 0.7 then
+			-- warn("Shield")
+			PlayerSessions.setParticipantPendingAction(participantId, "Shield")
+			PlayerSessions.addParticipantShield(participantId, randomGenerator:NextInteger(1, 2))
+		else
+			-- warn("Load")
+			PlayerSessions.setParticipantPendingAction(participantId, "Load")
+		end
+
+		PlayerSessions.setParticipantReady(participantId, true)
 	end
 end
 
@@ -246,21 +356,21 @@ end
 function ParticipantService.initialize()
 	Players.PlayerAdded:Connect(function(player)
 		player.CharacterAdded:Connect(function(character)
-			registerParticipantModel(getParticipantId(player), character)
+			refreshPlayerCharacterModel(player, character)
 		end)
 
 		if player.Character then
-			registerParticipantModel(getParticipantId(player), player.Character)
+			refreshPlayerCharacterModel(player, player.Character)
 		end
 	end)
 
 	for _, player in Players:GetPlayers() do
 		player.CharacterAdded:Connect(function(character)
-			registerParticipantModel(getParticipantId(player), character)
+			refreshPlayerCharacterModel(player, character)
 		end)
 
 		if player.Character then
-			registerParticipantModel(getParticipantId(player), player.Character)
+			refreshPlayerCharacterModel(player, player.Character)
 		end
 	end
 
@@ -284,8 +394,10 @@ function ParticipantService.initialize()
 						unregisterParticipantModel(participantId)
 					end)
 				else
-					unregisterParticipantModel(participantId)
 					killPlayerCharacter(participantId)
+					task.delay(1, function()
+						unregisterParticipantModel(participantId)
+					end)
 				end
 			end
 
@@ -294,6 +406,23 @@ function ParticipantService.initialize()
 				if model and model.Parent then
 					model:Destroy()
 				end
+				unregisterParticipantModel(participantId)
+			end
+		end
+
+		for participantId, nextParticipant in nextParticipants do
+			local previousParticipant = previousParticipants[participantId]
+			if nextParticipant.IsAlive and (not previousParticipant or not previousParticipant.IsAlive) then
+				if isDummyParticipant(participantId) then
+					local dummyModel = ensureDummyModel(participantId)
+					registerParticipantModel(participantId, dummyModel)
+				else
+					local player = getPlayerFromParticipantId(participantId)
+					if player then
+						refreshPlayerCharacterModel(player, player.Character)
+					end
+				end
+			elseif not nextParticipant.IsAlive then
 				unregisterParticipantModel(participantId)
 			end
 		end

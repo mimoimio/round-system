@@ -94,8 +94,16 @@ local function ResolutionSnapshot()
 	return remote
 end
 
+local function Ready()
+	local remote = isserver and Instance.new("RemoteEvent") or ReplicatedStorage.Shared.Events:WaitForChild("Ready")
+	remote.Name = "Ready"
+	remote.Parent = ReplicatedStorage.Shared.Events
+	return remote
+end
+
 return {
 	start = Start() :: RemoteEvent,
+	Ready = Ready() :: RemoteEvent,
 	dispatch = Dispatch() :: RemoteEvent,
 	saveSettings = SaveSettings() :: RemoteEvent,
 	HeadSync = HeadSync() :: UnreliableRemoteEvent,

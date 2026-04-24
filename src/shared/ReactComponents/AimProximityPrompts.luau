@@ -157,30 +157,30 @@ local function PromptEntryRow(props: {
 	end, { props.Entry.isClosing })
 	-- for pc
 	useEffect(function()
-		local connection = not props.Entry.isClosing
-			and UserInputService.InputBegan:Connect(function(io: InputObject, gp)
-				if gp then
-					return
-				end
-				if io.UserInputType == Enum.UserInputType.MouseButton1 then
-					props.OnShoot()
-				end
-			end)
-		local connection2 = not props.Entry.isClosing
-			and UserInputService.InputBegan:Connect(function(io: InputObject, gp)
-				if gp then
-					return
-				end
-				if io.UserInputType == Enum.UserInputType.MouseButton2 then
-					props.OnRemove()
-				end
-			end)
+		local connections = {
+			connection = not props.Entry.isClosing
+				and UserInputService.InputBegan:Connect(function(io: InputObject, gp)
+					if gp then
+						return
+					end
+					if io.UserInputType == Enum.UserInputType.MouseButton1 then
+						props.OnShoot()
+					end
+				end),
+			connection2 = not props.Entry.isClosing
+				and UserInputService.InputBegan:Connect(function(io: InputObject, gp)
+					if gp then
+						return
+					end
+					if io.UserInputType == Enum.UserInputType.MouseButton2 then
+						props.OnRemove()
+					end
+				end),
+			-- touch = UserInputService.TouchEnabled,
+		}
 		return function()
-			if connection then
+			for i, connection in connections do
 				connection:Disconnect()
-			end
-			if connection2 then
-				connection2:Disconnect()
 			end
 		end
 	end, { props.Entry.isClosing })
@@ -227,7 +227,8 @@ local function AimProximityPrompts()
 	local promptToEntryRef = useRef({} :: { [ProximityPrompt]: string })
 	local highlightByPromptRef = useRef({} :: { [ProximityPrompt]: Highlight })
 	local aimedParticipantId, setAimedParticipantId = useState(nil :: string?)
-	local canShowPrompts = participant and participant.IsAlive
+	local canShowPrompts = participant
+		and participant.IsAlive
 		and roundState.Phase == "ActionInput"
 		and participant.PendingAction == "Shoot"
 
@@ -309,7 +310,8 @@ local function AimProximityPrompts()
 
 	useEffect(function()
 		local localParticipant = participant
-		local canShowPrompts = localParticipant and localParticipant.IsAlive
+		local canShowPrompts = localParticipant
+			and localParticipant.IsAlive
 			and roundState.Phase == "ActionInput"
 			and localParticipant.PendingAction == "Shoot"
 		if not canShowPrompts then
@@ -377,12 +379,14 @@ local function AimProximityPrompts()
 	useEffect(function()
 		local shownConnection = ProximityPromptService.PromptShown:Connect(function(prompt: ProximityPrompt)
 			local localParticipant = participant
-			if not (
-				localParticipant
-				and localParticipant.IsAlive
-				and roundState.Phase == "ActionInput"
-				and localParticipant.PendingAction == "Shoot"
-			) then
+			if
+				not (
+					localParticipant
+					and localParticipant.IsAlive
+					and roundState.Phase == "ActionInput"
+					and localParticipant.PendingAction == "Shoot"
+				)
+			then
 				return
 			end
 
@@ -454,26 +458,28 @@ local function AimProximityPrompts()
 
 	local children = {}
 	for id, entry in entries do
-		children[id] = not entry.isClosing and e(PromptEntryRow, {
-			Entry = entry,
-			OnShoot = function()
-				sendInput("AddTarget", entry.participantId)
-			end,
-			OnRemove = function()
-				sendInput("RemoveTarget", entry.participantId)
-			end,
-		})
+		children[id] = not entry.isClosing
+			and e(PromptEntryRow, {
+				Entry = entry,
+				OnShoot = function()
+					sendInput("AddTarget", entry.participantId)
+				end,
+				OnRemove = function()
+					sendInput("RemoveTarget", entry.participantId)
+				end,
+			})
 
 		local model = getModelFromParticipantId(entry.participantId)
-		children[id .. "highlight"] = not entry.isClosing and e("Highlight", {
-			Name = "AimPromptHighlight",
-			Adornee = model,
-			FillColor = Color3.fromRGB(255, 204, 64),
-			FillTransparency = 0.75,
-			OutlineColor = Color3.fromRGB(255, 255, 255),
-			OutlineTransparency = 0,
-			Parent = model,
-		})
+		children[id .. "highlight"] = not entry.isClosing
+			and e("Highlight", {
+				Name = "AimPromptHighlight",
+				Adornee = model,
+				FillColor = Color3.fromRGB(255, 204, 64),
+				FillTransparency = 0.75,
+				OutlineColor = Color3.fromRGB(255, 255, 255),
+				OutlineTransparency = 0,
+				Parent = model,
+			})
 	end
 
 	return e("Frame", {

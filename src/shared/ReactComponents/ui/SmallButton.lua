@@ -24,6 +24,7 @@ local function SmallButton(props)
 		BackgroundColor3 = props.BackgroundColor3,
 		BackgroundTransparency = bgTransparency,
 		BorderSizePixel = 0,
+		AutomaticSize = props.AutomaticSize or Enum.AutomaticSize.XY,
 		ZIndex = props.ZIndex or 11,
 		AutoButtonColor = props.AutoButtonColor,
 		[React.Event.Activated] = props[React.Event.Activated] or nil,
@@ -57,8 +58,8 @@ local function SmallButton(props)
 	props.children = props.children or {}
 	props.children.UICorner = e("UICorner", { CornerRadius = props.CornerRadius or UDim.new(0, 8) })
 	props.children.UITextSizeConstraint = e("UITextSizeConstraint", {
-		MaxTextSize = 18,
-		MinTextSize = 18,
+		MaxTextSize = props.TextSize or 18,
+		MinTextSize = props.TextSize or 18,
 	})
 	props.children.UIScale = e("UIScale", {
 		Scale = props.Scale,
@@ -82,8 +83,8 @@ local function SmallButton(props)
 				Active = false,
 			}, {
 				UITextSizeConstraint = e("UITextSizeConstraint", {
-					MaxTextSize = 18,
-					MinTextSize = 18,
+					MaxTextSize = props.TextSize or 18,
+					MinTextSize = props.TextSize or 18,
 				}),
 				UICorner = e("UICorner", { CornerRadius = UDim.new(0, 8) }),
 			})

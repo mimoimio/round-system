@@ -5,7 +5,7 @@ local PlayerSessions = require(ReplicatedStorage.Shared.producers.PlayerSessions
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local InputService = {}
-local DEBUG_INPUT_LOGS = true
+local DEBUG_INPUT_LOGS = false
 
 type InputRequest = "Load" | "ToggleReady" | "AddShield" | "RemoveShield" | "AddTarget" | "RemoveTarget" | "Aim"
 

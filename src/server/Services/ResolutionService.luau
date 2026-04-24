@@ -180,6 +180,7 @@ function ResolutionService.ResolveCurrentTurn()
 			if not survives then
 				PlayerSessions.setParticipantAlive(targetId, false)
 				PlayerSessions.clearParticipantPending(targetId)
+				PlayerSessions.setParticipantBullets(targetId, 0)
 				fireCombatFeedback(participants, targetId, "death", {
 					participantId = targetId,
 					incoming = incoming,

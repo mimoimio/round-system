@@ -21,6 +21,7 @@ local SmallText = function(props)
 		TextScaled = props.TextScaled,
 		Font = props.Font or "FredokaOne",
 		LayoutOrder = props.LayoutOrder,
+		ZIndex = props.ZIndex,
 	}, children)
 end
 return SmallText

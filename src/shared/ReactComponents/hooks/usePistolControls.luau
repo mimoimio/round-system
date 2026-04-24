@@ -19,7 +19,7 @@ type Controls = {
 }
 
 local localPlayer = Players.LocalPlayer
-local DEBUG_CONTROL_LOGS = true
+local DEBUG_CONTROL_LOGS = false
 local MOBILE_DOUBLE_TAP_WINDOW = 0.3
 
 local function logControl(message: string)

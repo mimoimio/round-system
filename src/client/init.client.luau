@@ -28,7 +28,6 @@ game.ReplicatedStorage.Shared.Events.dispatch.OnClientEvent:Connect(function(act
 	-- 	warn('action', action.name, action.arguments)
 	-- end
 
-
 	receiver:dispatch(actions)
 	DispatchEvent.OnActionsDispatched(actions)
 end)
@@ -110,13 +109,14 @@ end
 -- end)
 
 local secs = 0
+loadApp()
 
 task.spawn(function()
 	while not isLoadedOnce do
 		secs += 1
 		task.wait(1)
 		if secs >= 3 then
-			warn("FORCE LOAD. LOAD ONCE DOESNT WORK")
+			-- warn("FORCE LOAD. LOAD ONCE DOESNT WORK")
 			loadApp()
 		end
 	end

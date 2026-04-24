@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local SmallText = require(script.Parent.ui.SmallText)
 local React = require(ReplicatedStorage.Packages.React)
 local PlayerSessions = require(ReplicatedStorage.Shared.producers.PlayerSessions)
 
@@ -9,6 +10,14 @@ local useBinding = React.useBinding
 local useEffect = React.useEffect
 local useRef = React.useRef
 local useState = React.useState
+
+local phase = {
+	WaitingForPlayers = "Waiting For Players...",
+	Intermission = "Intermission",
+	ActionInput = "PLAY!",
+	Resolution = "Resolution",
+	Ended = "Ended",
+}
 
 local function RoundPhaseProgressBar()
 	local progressBinding, setProgressBinding = useBinding(0)
@@ -51,19 +60,26 @@ local function RoundPhaseProgressBar()
 	end, {})
 
 	return e("Frame", {
-		Size = UDim2.fromScale(1, 0.015),
+		Size = UDim2.new(1, 0, 0, 32),
 		BackgroundColor3 = Color3.fromRGB(36, 36, 36),
-		AnchorPoint = Vector2.new(0, 1),
+		AnchorPoint = Vector2.new(0, 0),
 		BorderSizePixel = 0,
 		ZIndex = 0,
 	}, {
 		Fill = e("Frame", {
 			Size = progressBinding:map(function(progress)
-				return UDim2.fromScale(roundState.Phase == "Resolution" and 0 or progress, 1)
+				-- return UDim2.fromScale(roundState.Phase == "Resolution" and 0 or progress, 1)
+				return UDim2.fromScale(progress, 1)
 			end),
 			BackgroundColor3 = Color3.fromRGB(255, 183, 77),
 			BorderSizePixel = 0,
 			ZIndex = 1,
+		}),
+		Phase = e(SmallText, {
+			Size = UDim2.new(1, 0, 1, 0),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Text = roundState.Phase and phase[roundState.Phase] or roundState.Phase or "",
+			ZIndex = 2,
 		}),
 	})
 end

@@ -61,7 +61,7 @@ local function RoundControlsRow()
 	useEffect(function()
 		if isParticipantAlive then
 			UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-			game.Players.LocalPlayer:GetMouse().Icon = ""
+			-- game.Players.LocalPlayer:GetMouse().Icon = "rbxassetid://794950602"
 			GuiService.TouchControlsEnabled = false
 		else
 			UserInputService.MouseBehavior = Enum.MouseBehavior.Default

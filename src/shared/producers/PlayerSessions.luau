@@ -53,6 +53,7 @@ export type PlayersActions = {
 	setMusicVolume: (playerId: string, volume: number) -> (),
 	setSFXVolume: (playerId: string, volume: number) -> (),
 	setCharacter: (playerId: string, character: Model?) -> (),
+	setPlayerPhase: (playerId: string, playerPhase: "Ready" | "Not Ready") -> (),
 
 	setPhase: (newPhase: Phase, duration: number) -> (),
 	setRoundTurnIndex: (turnIndex: number) -> (),
@@ -291,7 +292,7 @@ local actions = {
 	setRoundWinnerParticipant = function(state: PlayersState, participantId: string?)
 		return Merge(state, {
 			CurrentRound = Merge(state.CurrentRound, {
-				WinnerParticipantId = participantId,
+				WinnerParticipantId = participantId or Sift.None,
 			}),
 		})
 	end,
@@ -380,6 +381,7 @@ local actions = {
 				PendingAction = "None",
 				PendingShields = 0,
 				PendingTargets = {},
+				-- Bullets = 0,
 				IsReady = false,
 			})
 		end)

@@ -82,7 +82,7 @@ local function Targets()
 					if adornee then
 						children[targetParticipantId] = e("BillboardGui", {
 							Adornee = adornee,
-							Size = UDim2.fromScale(4, 1),
+							Size = UDim2.fromOffset(200, 50),
 							StudsOffset = Vector3.new(0, 2.6, 0),
 							AlwaysOnTop = true,
 						}, {

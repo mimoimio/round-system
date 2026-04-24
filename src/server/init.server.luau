@@ -2,7 +2,6 @@ local serviceModules = script.Services:GetChildren()
 local services = {}
 local viewModules = script.Views:GetChildren()
 local views = {}
-
 -- print([[services initialization]])
 for i, d in serviceModules do
 	if d:IsA("ModuleScript") then

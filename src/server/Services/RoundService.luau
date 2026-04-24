@@ -13,11 +13,11 @@ local RoundService = {}
 
 local INTERMISSION_DURATION = 4
 local ACTION_INPUT_DURATION = 5
-local MIN_ACTION_INPUT_DURATION = 5
+local MIN_ACTION_INPUT_DURATION = 2
 local RESOLUTION_DURATION = 1
 local ENDED_DURATION = 5
 local WAITING_RECHECK_DURATION = 5
-local LOOP_TICK_SECONDS = 1
+local LOOP_TICK_SECONDS = 0.25
 local MIN_HUMAN_PLAYERS_TO_START = 1
 local WIN_REWARD_CASH = 10
 
@@ -48,7 +48,20 @@ local function getActionInputDuration(turnIndex: number): number
 end
 
 local function getActivePlayerCount(): number
-	return #Players:GetPlayers()
+	local players: { PlayerSessions.PlayerEntity } = PlayerSessions:getState().players
+	local readyPlayers = {}
+	for i, player in Players:GetPlayers() do
+		local playerEntity = players[tostring(player.UserId)]
+		if not playerEntity then
+			continue
+		end
+		local ready = playerEntity.PlayerPhase == "Ready"
+		if not ready then
+			continue
+		end
+		table.insert(readyPlayers, player)
+	end
+	return #readyPlayers
 end
 
 local function transitionToWaitingForPlayers()
@@ -72,6 +85,7 @@ local function transitionToActionInput()
 	PlayerSessions.setRoundTurnIndex(nextTurnIndex)
 	ParticipantService.ClearTurnInputs()
 	PlayerSessions.setPhase("ActionInput", getActionInputDuration(nextTurnIndex) + workspace:GetServerTimeNow())
+	ParticipantService.AssignRandomDummyInputsForTurn()
 end
 
 local function buildResolutionSnapshot(): ResolutionSnapshotPayload
@@ -124,9 +138,12 @@ end
 local function transitionToResolution()
 	Remotes.ResolutionSnapshot:FireAllClients(buildResolutionSnapshot())
 	ResolutionService.ResolveCurrentTurn()
-	local state = PlayerSessions:getState()
-
-	PlayerSessions.setPhase("Resolution", RESOLUTION_DURATION + workspace:GetServerTimeNow())
+	local state: PlayerSessions.PlayersState = PlayerSessions:getState()
+	local participantsCount = 0
+	for i, participant in state.CurrentRound.Participants do
+		participantsCount += 1
+	end
+	PlayerSessions.setPhase("Resolution", RESOLUTION_DURATION + workspace:GetServerTimeNow() + 0.1 * participantsCount)
 end
 
 local function awardWinnerAndFinalize()
@@ -145,7 +162,12 @@ local function awardWinnerAndFinalize()
 end
 
 local function clearRoundParticipants()
+	local participantIds = {}
 	for participantId in PlayerSessions:getState().CurrentRound.Participants do
+		table.insert(participantIds, participantId)
+	end
+
+	for _, participantId in participantIds do
 		PlayerSessions.removeParticipant(participantId)
 	end
 end
@@ -160,6 +182,10 @@ local function runLoop()
 		end
 
 		-- warn("currentRound",currentRound)
+
+		if currentRound.Phase == "ActionInput" then
+			ParticipantService.AssignRandomDummyInputsForTurn()
+		end
 
 		if currentRound.Phase == "ActionInput" and ParticipantService.AreAllAliveReady() then
 			transitionToResolution()
